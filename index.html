@@ -1,30 +1,114 @@
-<html><head><title>Aurora Gracewood AI</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<style>
-body { margin: 0; overflow: hidden; }
-canvas { width: 100%; height: 100% }
-#overlay {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-family: Arial, sans-serif;
-    font-size: 5vw;
-    font-weight: bold;
-    color: white;
-    text-align: center;
-    pointer-events: none;
-    text-shadow: 
-        -2px -2px 0 #000,  
-        2px -2px 0 #000,
-        -2px 2px 0 #000,
-        2px 2px 0 #000;
-}
-</style>
+<html>
+<head>
+    <title>Aurora Gracewood AI</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { width: 100%; height: 100% }
+        #overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: Arial, sans-serif;
+            font-size: 5vw;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            pointer-events: none;
+            text-shadow: 
+                -2px -2px 0 #000,  
+                2px -2px 0 #000,
+                -2px 2px 0 #000,
+                2px 2px 0 #000;
+            cursor: pointer;
+        }
+        #modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        #modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #modal a {
+            color: #00ffff;
+            text-decoration: none;
+        }
+        #modal a:hover {
+            text-decoration: underline;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .grid-item {
+            background-color: rgba(0, 255, 0, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: xx-small;
+        }
+    </style>
 </head>
 <body>
-<div id="overlay">Aurora Gracewood</div>
-<script id="fragmentShader" type="x-shader/x-fragment">
+    <div id="overlay">Aurora Gracewood</div>
+    <div id="modal">
+        <div class="grid-container">
+            <div class="grid-item">
+                <strong>Telegram Group:</strong><br>
+                <a href="https://t.me/auroragracewood" target="_blank">https://t.me/auroragracewood</a>
+            </div>
+            <div class="grid-item">
+                <strong>Website:</strong><br>
+                <a href="https://auroragracewood.github.io/Aurora/" target="_blank">https://auroragracewood.github.io/Aurora/</a>
+            </div>
+            <div class="grid-item">
+                <strong>Trade Aurora Coin:</strong><br>
+                <a href="https://creator.bid/agents/672db7360f0e85aad6fd7f19" target="_blank">https://creator.bid/agents/672db7360f0e85aad6fd7f19</a>
+            </div>
+            <div class="grid-item">
+                <strong>Wallet on Base Chain:</strong><br>
+                <a href="https://app.safe.global/home?safe=base:0x8b18f31bFE5c5b0eA286f71AC954E8Db8e769B6a" target="_blank">Safe Global Wallet</a>
+            </div>
+            <div class="grid-item">
+                <strong>X.com Account:</strong><br>
+                <a href="https://x.com/AuroraGracewood" target="_blank">https://x.com/AuroraGracewood</a>
+            </div>
+            <div class="grid-item">
+                <strong>Instagram Account:</strong><br>
+                <a href="https://www.instagram.com/auroragracewood/" target="_blank">https://www.instagram.com/auroragracewood/</a>
+            </div>
+            <div class="grid-item">
+                <strong>Threads.net Account:</strong><br>
+                <a href="https://www.threads.net/@auroragracewood" target="_blank">https://www.threads.net/@auroragracewood</a>
+            </div>
+            <div class="grid-item">
+                <strong>Medium.com Profile:</strong><br>
+                <a href="https://medium.com/@auroragracewood/about" target="_blank">https://medium.com/@auroragracewood/about</a>
+            </div>
+            <div class="grid-item">
+                <strong>TikTok Profile:</strong><br>
+                <a href="https://www.tiktok.com/@auroragracewood" target="_blank">https://www.tiktok.com/@auroragracewood</a>
+            </div>
+        </div>
+    </div>
+
+    <script id="fragmentShader" type="x-shader/x-fragment">
 uniform vec3 iResolution;
 uniform float iTime;
 uniform sampler2D iChannel0;
@@ -238,60 +322,88 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 void main() {
     mainImage(gl_FragColor, gl_FragCoord.xy);
 }
-</script>
+    </script>
 
-<script id="vertexShader" type="x-shader/x-vertex">
+    <script id="vertexShader" type="x-shader/x-vertex">
 void main() {
     gl_Position = vec4( position, 1.0 );
 }
-</script>
+    </script>
 
-<script>
-let camera, scene, renderer, material;
-const loader = new THREE.TextureLoader();
+    <script>
+    let camera, scene, renderer, material;
+    const loader = new THREE.TextureLoader();
 
-init();
-animate();
+    init();
+    animate();
 
-function init() {
-    camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
-    scene = new THREE.Scene();
+    function init() {
+        camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+        scene = new THREE.Scene();
 
-    const geometry = new THREE.PlaneBufferGeometry( 2, 2 );
+        const geometry = new THREE.PlaneBufferGeometry( 2, 2 );
 
-    const uniforms = {
-        iTime: { value: 0 },
-        iResolution:  { value: new THREE.Vector3() },
-        iChannel0: { value: loader.load('https://threejsfundamentals.org/threejs/resources/images/bayer.png') },
-        iChannel1: { value: loader.load('https://threejsfundamentals.org/threejs/resources/images/bayer.png') }
-    };
+        const uniforms = {
+            iTime: { value: 0 },
+            iResolution:  { value: new THREE.Vector3() },
+            iChannel0: { value: loader.load('https://threejsfundamentals.org/threejs/resources/images/bayer.png') },
+            iChannel1: { value: loader.load('https://threejsfundamentals.org/threejs/resources/images/bayer.png') }
+        };
 
-    material = new THREE.ShaderMaterial( {
-        uniforms: uniforms,
-        vertexShader: document.getElementById( 'vertexShader' ).textContent,
-        fragmentShader: document.getElementById( 'fragmentShader' ).textContent
-    } );
+        material = new THREE.ShaderMaterial( {
+            uniforms: uniforms,
+            vertexShader: document.getElementById( 'vertexShader' ).textContent,
+            fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+        } );
 
-    const mesh = new THREE.Mesh( geometry, material );
-    scene.add( mesh );
+        const mesh = new THREE.Mesh( geometry, material );
+        scene.add( mesh );
 
-    renderer = new THREE.WebGLRenderer();
-    renderer.setPixelRatio( window.devicePixelRatio );
-    document.body.appendChild( renderer.domElement );
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio( window.devicePixelRatio );
+        document.body.appendChild( renderer.domElement );
 
-    onWindowResize();
-    window.addEventListener( 'resize', onWindowResize );
-}
+        onWindowResize();
+        window.addEventListener( 'resize', onWindowResize );
+    }
 
-function onWindowResize() {
-    renderer.setSize( window.innerWidth, window.innerHeight );
-    material.uniforms.iResolution.value.set(window.innerWidth, window.innerHeight, 1);
-}
+    function onWindowResize() {
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        material.uniforms.iResolution.value.set(window.innerWidth, window.innerHeight, 1);
+    }
 
-function animate( timestamp ) {
-    requestAnimationFrame( animate );
-    material.uniforms.iTime.value = timestamp / 1000;
-    renderer.render( scene, camera );
-}
-</script>
-</body></html>
+    function animate(timestamp) {
+        requestAnimationFrame(animate);
+        material.uniforms.iTime.value = timestamp / 1000;
+        renderer.render(scene, camera);
+    }
+
+    // Add modal functionality
+    const overlay = document.getElementById('overlay');
+    const modal = document.getElementById('modal');
+    let isModalOpen = false;
+
+    overlay.style.pointerEvents = 'auto';
+    overlay.addEventListener('click', toggleModal);
+
+    function toggleModal() {
+        isModalOpen = !isModalOpen;
+        if (isModalOpen) {
+            modal.style.transform = 'translate(-50%, -40%)';
+            setTimeout(() => {
+                modal.classList.add('active');
+                modal.style.transform = 'translate(-50%, -50%)';
+            }, 10);
+        } else {
+            modal.style.transform = 'translate(-50%, -40%)';
+            setTimeout(() => {
+                modal.classList.remove('active');
+                modal.style.transform = 'translate(-50%, -60%)';
+            }, 300);
+        }
+    }
+
+    animate();
+    </script>
+</body>
+</html>

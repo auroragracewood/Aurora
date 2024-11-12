@@ -6,25 +6,20 @@
     <title>Aurora Gracewood AI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; }
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
         canvas { width: 100%; height: 100% }
         #overlay {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-family: Arial, sans-serif;
-            font-size: 8vw; /* Increased for better visibility on mobile */
+            font-size: 5vw;
             font-weight: bold;
             color: white;
             text-align: center;
-            pointer-events: none;
-            text-shadow: 
-                -2px -2px 0 #000,  
-                2px -2px 0 #000,
-                -2px 2px 0 #000,
-                2px 2px 0 #000;
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
             cursor: pointer;
+            z-index: 10;
         }
         #modal, #secondModal {
             position: fixed;
@@ -42,7 +37,7 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease, transform 0.3s ease;
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            z-index: 20;
         }
         #modal {
             width: 90%;
@@ -92,29 +87,42 @@
             color: #00ff00;
             font-size: 20px;
             cursor: pointer;
-            padding: 10px; /* Larger touch target */
+            padding: 10px;
         }
         #iframeContainer {
             flex-grow: 1;
             margin-bottom: 20px;
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling for iframe on iOS */
         }
         #creatorIframe {
             width: 100%;
             height: 100%;
             border: none;
         }
+        #mobileBackground {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #000033, #000066);
+            z-index: 1;
+        }
+        .star {
+            position: absolute;
+            background-color: #ffffff;
+            width: 2px;
+            height: 2px;
+            border-radius: 50%;
+        }
         @media (min-width: 768px) {
             .grid-container {
                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            }
-            #overlay {
-                font-size: 5vw;
             }
         }
     </style>
 </head>
 <body>
+    <div id="mobileBackground"></div>
     <div id="overlay">Aurora Gracewood</div>
     <div id="modal">
         <div class="grid-container">
@@ -391,49 +399,75 @@
     <script>
     let camera, scene, renderer, material;
     const loader = new THREE.TextureLoader();
+    let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     init();
     animate();
 
     function init() {
-        camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+        if (!isMobile) {
+            initDesktop();
+        } else {
+            initMobile();
+        }
+
+        onWindowResize();
+        window.addEventListener('resize', onWindowResize);
+    }
+
+    function initDesktop() {
+        camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
         scene = new THREE.Scene();
 
-        const geometry = new THREE.PlaneBufferGeometry( 2, 2 );
+        const geometry = new THREE.PlaneBufferGeometry(2, 2);
 
         const uniforms = {
             iTime: { value: 0 },
-            iResolution:  { value: new THREE.Vector3() },
+            iResolution: { value: new THREE.Vector3() },
             iChannel0: { value: loader.load('https://threejsfundamentals.org/threejs/resources/images/bayer.png') },
             iChannel1: { value: loader.load('https://threejsfundamentals.org/threejs/resources/images/bayer.png') }
         };
 
-        material = new THREE.ShaderMaterial( {
+        material = new THREE.ShaderMaterial({
             uniforms: uniforms,
-            vertexShader: document.getElementById( 'vertexShader' ).textContent,
-            fragmentShader: document.getElementById( 'fragmentShader' ).textContent
-        } );
+            vertexShader: document.getElementById('vertexShader').textContent,
+            fragmentShader: document.getElementById('fragmentShader').textContent
+        });
 
-        const mesh = new THREE.Mesh( geometry, material );
-        scene.add( mesh );
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio( window.devicePixelRatio );
-        document.body.appendChild( renderer.domElement );
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+    }
 
-        onWindowResize();
-        window.addEventListener( 'resize', onWindowResize );
+    function initMobile() {
+        const mobileBackground = document.getElementById('mobileBackground');
+        for (let i = 0; i < 100; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = `${Math.random() * 100}%`;
+            star.style.top = `${Math.random() * 100}%`;
+            star.style.animationDuration = `${Math.random() * 3 + 2}s`;
+            star.style.animationDelay = `${Math.random() * 2}s`;
+            mobileBackground.appendChild(star);
+        }
     }
 
     function onWindowResize() {
-        renderer.setSize( window.innerWidth, window.innerHeight );
-        material.uniforms.iResolution.value.set(window.innerWidth, window.innerHeight, 1);
+        if (!isMobile) {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            material.uniforms.iResolution.value.set(window.innerWidth, window.innerHeight, 1);
+        }
     }
 
     function animate(timestamp) {
         requestAnimationFrame(animate);
-        material.uniforms.iTime.value = timestamp / 1000;
-        renderer.render(scene, camera);
+        if (!isMobile) {
+            material.uniforms.iTime.value = timestamp / 1000;
+            renderer.render(scene, camera);
+        }
     }
 
     // Add modal functionality
@@ -477,27 +511,6 @@
         isSecondModalOpen = false;
         secondModal.classList.remove('active');
     });
-
-    // Optimize shader performance for mobile
-    function optimizeShaderForMobile() {
-        const fragmentShader = document.getElementById('fragmentShader');
-        let shaderCode = fragmentShader.textContent;
-        
-        // Reduce the number of steps in the main loop
-        shaderCode = shaderCode.replace(/float steps = clamp$$25\.0\/\(1\.0-slope$$, 25\.0, 200\.0\);/, 
-                                        'float steps = clamp(15.0/(1.0-slope), 15.0, 100.0);');
-        
-        // Simplify noise function for mobile
-        shaderCode = shaderCode.replace(/float noiseOctaves$$vec(.) x$$ {[\s\S]*?}/, 
-                                        'float noiseOctaves(vec$1 x) { return noise(x); }');
-        
-        fragmentShader.textContent = shaderCode;
-    }
-
-    // Check if it's a mobile device
-    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-        optimizeShaderForMobile();
-    }
 
     animate();
     </script>

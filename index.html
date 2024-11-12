@@ -23,7 +23,7 @@
                 2px 2px 0 #000;
             cursor: pointer;
         }
-        #modal {
+        #modal, #secondModal {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -34,22 +34,30 @@
             border-radius: 10px;
             font-family: 'Courier New', monospace;
             font-size: 14px;
-            max-width: 80%;
             max-height: 80%;
             overflow-y: auto;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease, transform 0.3s ease;
         }
-        #modal.active {
+        #modal {
+            max-width: 80%;
+        }
+        #secondModal {
+            width: 95%;
+            height: 90%;
+            display: flex;
+            flex-direction: column;
+        }
+        #modal.active, #secondModal.active {
             opacity: 1;
             pointer-events: auto;
         }
-        #modal a {
+        #modal a, #secondModal a {
             color: #00ffff;
             text-decoration: none;
         }
-        #modal a:hover {
+        #modal a:hover, #secondModal a:hover {
             text-decoration: underline;
         }
         .grid-container {
@@ -63,6 +71,30 @@
             border-radius: 5px;
             font-size: xx-small;
         }
+        #modalFooter, #secondModalFooter {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 12px;
+        }
+        #closeSecondModal {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #00ff00;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        #iframeContainer {
+            flex-grow: 1;
+            margin-bottom: 20px;
+        }
+        #creatorIframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     </style>
 </head>
 <body>
@@ -72,10 +104,6 @@
             <div class="grid-item">
                 <strong>Telegram Group:</strong><br>
                 <a href="https://t.me/auroragracewood" target="_blank">https://t.me/auroragracewood</a>
-            </div>
-            <div class="grid-item">
-                <strong>Website:</strong><br>
-                <a href="https://auroragracewood.github.io/Aurora/" target="_blank">https://auroragracewood.github.io/Aurora/</a>
             </div>
             <div class="grid-item">
                 <strong>Trade Aurora Coin:</strong><br>
@@ -105,6 +133,19 @@
                 <strong>TikTok Profile:</strong><br>
                 <a href="https://www.tiktok.com/@auroragracewood" target="_blank">https://www.tiktok.com/@auroragracewood</a>
             </div>
+        </div>
+        <div id="modalFooter">
+            <a href="#" id="openSecondModal">Open Creator.bid</a>
+        </div>
+    </div>
+
+    <div id="secondModal">
+        <button id="closeSecondModal">&times;</button>
+        <div id="iframeContainer">
+            <iframe id="creatorIframe" src="https://creator.bid/agents/672db7360f0e85aad6fd7f19"></iframe>
+        </div>
+        <div id="secondModalFooter">
+            <a href="https://creator.bid/agents/672db7360f0e85aad6fd7f19" target="_blank">Trade Aurora on Creator.bid</a>
         </div>
     </div>
 
@@ -381,7 +422,11 @@ void main() {
     // Add modal functionality
     const overlay = document.getElementById('overlay');
     const modal = document.getElementById('modal');
+    const secondModal = document.getElementById('secondModal');
+    const openSecondModalLink = document.getElementById('openSecondModal');
+    const closeSecondModalButton = document.getElementById('closeSecondModal');
     let isModalOpen = false;
+    let isSecondModalOpen = false;
 
     overlay.style.pointerEvents = 'auto';
     overlay.addEventListener('click', toggleModal);
@@ -402,6 +447,19 @@ void main() {
             }, 300);
         }
     }
+
+    openSecondModalLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        isSecondModalOpen = true;
+        isModalOpen = false;
+        modal.classList.remove('active');
+        secondModal.classList.add('active');
+    });
+
+    closeSecondModalButton.addEventListener('click', () => {
+        isSecondModalOpen = false;
+        secondModal.classList.remove('active');
+    });
 
     animate();
     </script>

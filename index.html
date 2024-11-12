@@ -1,5 +1,8 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aurora Gracewood AI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -11,7 +14,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
             font-family: Arial, sans-serif;
-            font-size: 5vw;
+            font-size: 8vw; /* Increased for better visibility on mobile */
             font-weight: bold;
             color: white;
             text-align: center;
@@ -24,7 +27,7 @@
             cursor: pointer;
         }
         #modal, #secondModal {
-            position: absolute;
+            position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -39,9 +42,11 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease, transform 0.3s ease;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
         }
         #modal {
-            max-width: 80%;
+            width: 90%;
+            max-width: 400px;
         }
         #secondModal {
             width: 95%;
@@ -56,20 +61,22 @@
         #modal a, #secondModal a {
             color: #00ffff;
             text-decoration: none;
+            display: inline-block;
+            padding: 5px 0;
         }
         #modal a:hover, #secondModal a:hover {
             text-decoration: underline;
         }
         .grid-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: 1fr;
             gap: 10px;
         }
         .grid-item {
             background-color: rgba(0, 255, 0, 0.1);
             padding: 10px;
             border-radius: 5px;
-            font-size: xx-small;
+            font-size: 12px;
         }
         #modalFooter, #secondModalFooter {
             margin-top: 20px;
@@ -85,15 +92,25 @@
             color: #00ff00;
             font-size: 20px;
             cursor: pointer;
+            padding: 10px; /* Larger touch target */
         }
         #iframeContainer {
             flex-grow: 1;
             margin-bottom: 20px;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling for iframe on iOS */
         }
         #creatorIframe {
             width: 100%;
             height: 100%;
             border: none;
+        }
+        @media (min-width: 768px) {
+            .grid-container {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+            #overlay {
+                font-size: 5vw;
+            }
         }
     </style>
 </head>
@@ -103,35 +120,35 @@
         <div class="grid-container">
             <div class="grid-item">
                 <strong>Telegram Group:</strong><br>
-                <a href="https://t.me/auroragracewood" target="_blank">https://t.me/auroragracewood</a>
+                <a href="https://t.me/auroragracewood" target="_blank" rel="noopener noreferrer">https://t.me/auroragracewood</a>
             </div>
             <div class="grid-item">
                 <strong>Trade Aurora Coin:</strong><br>
-                <a href="https://creator.bid/agents/672db7360f0e85aad6fd7f19" target="_blank">https://creator.bid/agents/672db7360f0e85aad6fd7f19</a>
+                <a href="https://creator.bid/agents/672db7360f0e85aad6fd7f19" target="_blank" rel="noopener noreferrer">https://creator.bid/agents/672db7360f0e85aad6fd7f19</a>
             </div>
             <div class="grid-item">
                 <strong>Wallet on Base Chain:</strong><br>
-                <a href="https://app.safe.global/home?safe=base:0x8b18f31bFE5c5b0eA286f71AC954E8Db8e769B6a" target="_blank">Safe Global Wallet</a>
+                <a href="https://app.safe.global/home?safe=base:0x8b18f31bFE5c5b0eA286f71AC954E8Db8e769B6a" target="_blank" rel="noopener noreferrer">Safe Global Wallet</a>
             </div>
             <div class="grid-item">
                 <strong>X.com Account:</strong><br>
-                <a href="https://x.com/AuroraGracewood" target="_blank">https://x.com/AuroraGracewood</a>
+                <a href="https://x.com/AuroraGracewood" target="_blank" rel="noopener noreferrer">https://x.com/AuroraGracewood</a>
             </div>
             <div class="grid-item">
                 <strong>Instagram Account:</strong><br>
-                <a href="https://www.instagram.com/auroragracewood/" target="_blank">https://www.instagram.com/auroragracewood/</a>
+                <a href="https://www.instagram.com/auroragracewood/" target="_blank" rel="noopener noreferrer">https://www.instagram.com/auroragracewood/</a>
             </div>
             <div class="grid-item">
                 <strong>Threads.net Account:</strong><br>
-                <a href="https://www.threads.net/@auroragracewood" target="_blank">https://www.threads.net/@auroragracewood</a>
+                <a href="https://www.threads.net/@auroragracewood" target="_blank" rel="noopener noreferrer">https://www.threads.net/@auroragracewood</a>
             </div>
             <div class="grid-item">
                 <strong>Medium.com Profile:</strong><br>
-                <a href="https://medium.com/@auroragracewood/about" target="_blank">https://medium.com/@auroragracewood/about</a>
+                <a href="https://medium.com/@auroragracewood/about" target="_blank" rel="noopener noreferrer">https://medium.com/@auroragracewood/about</a>
             </div>
             <div class="grid-item">
                 <strong>TikTok Profile:</strong><br>
-                <a href="https://www.tiktok.com/@auroragracewood" target="_blank">https://www.tiktok.com/@auroragracewood</a>
+                <a href="https://www.tiktok.com/@auroragracewood" target="_blank" rel="noopener noreferrer">https://www.tiktok.com/@auroragracewood</a>
             </div>
         </div>
         <div id="modalFooter">
@@ -140,235 +157,235 @@
     </div>
 
     <div id="secondModal">
-        <button id="closeSecondModal">&times;</button>
+        <button id="closeSecondModal" aria-label="Close">&times;</button>
         <div id="iframeContainer">
-            <iframe id="creatorIframe" src="https://creator.bid/agents/672db7360f0e85aad6fd7f19"></iframe>
+            <iframe id="creatorIframe" src="https://creator.bid/agents/672db7360f0e85aad6fd7f19" title="Creator.bid Aurora Page"></iframe>
         </div>
         <div id="secondModalFooter">
-            <a href="https://creator.bid/agents/672db7360f0e85aad6fd7f19" target="_blank">Trade Aurora on Creator.bid</a>
+            <a href="https://creator.bid/agents/672db7360f0e85aad6fd7f19" target="_blank" rel="noopener noreferrer">Trade Aurora on Creator.bid</a>
         </div>
     </div>
 
     <script id="fragmentShader" type="x-shader/x-fragment">
-uniform vec3 iResolution;
-uniform float iTime;
-uniform sampler2D iChannel0;
-uniform sampler2D iChannel1;
+    uniform vec3 iResolution;
+    uniform float iTime;
+    uniform sampler2D iChannel0;
+    uniform sampler2D iChannel1;
 
-// SHADER NOISE
-float hash(float p) { p = fract(p * 0.011); p *= p + 7.5; p *= p + p; return fract(p); }
-float hash(vec2 p) {vec3 p3 = fract(vec3(p.xyx) * 0.13); p3 += dot(p3, p3.yzx + 3.333); return fract((p3.x + p3.y) * p3.z); }
+    // SHADER NOISE
+    float hash(float p) { p = fract(p * 0.011); p *= p + 7.5; p *= p + p; return fract(p); }
+    float hash(vec2 p) {vec3 p3 = fract(vec3(p.xyx) * 0.13); p3 += dot(p3, p3.yzx + 3.333); return fract((p3.x + p3.y) * p3.z); }
 
-float noise(float x) {
-    float i = floor(x);
-    float f = fract(x);
-    float u = f * f * (3.0 - 2.0 * f);
-    return mix(hash(i), hash(i + 1.0), u)-0.5;
-}
-
-float noise(vec2 x) {
-    vec2 i = floor(x);
-    vec2 f = fract(x);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y)-0.5;
-}
-
-float noise(vec3 x) {
-    const vec3 step = vec3(110, 241, 171);
-    vec3 i = floor(x);
-    vec3 f = fract(x);
-    float n = dot(i, step);
-    vec3 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(mix( hash(n + dot(step, vec3(0, 0, 0))), hash(n + dot(step, vec3(1, 0, 0))), u.x),
-                   mix( hash(n + dot(step, vec3(0, 1, 0))), hash(n + dot(step, vec3(1, 1, 0))), u.x), u.y),
-               mix(mix( hash(n + dot(step, vec3(0, 0, 1))), hash(n + dot(step, vec3(1, 0, 1))), u.x),
-                   mix( hash(n + dot(step, vec3(0, 1, 1))), hash(n + dot(step, vec3(1, 1, 1))), u.x), u.y), u.z)-0.5;
-}
-
-float noiseOctaves(vec2 x) {
-    return noise(x) + 
-        noise(x*2.0+x)*0.5 + 
-        noise(x*4.0+x*2.0)*0.25 + 
-        noise(x*8.0+x*4.0)*0.125;
-}
-
-float noiseOctaves(vec3 x) {
-    return noise(x) + 
-        noise(x*2.0+x)*0.5 + 
-        noise(x*4.0+x*2.0)*0.25 + 
-        noise(x*8.0+x*4.0)*0.125;
-}
-
-// STARFIELD
-float Fetch(vec2 uvDisp, vec2 fragCoord) {
-    vec2 uvS = (fragCoord.xy+uvDisp);
-    vec2 uv = (fragCoord.xy+uvDisp) / iResolution.xy;
-    vec2 uvT0 = uvS / vec2(256.0, 256.0);
-    vec2 uvT1 = uvS / vec2(256.0, 256.0);
-    
-    vec2 noise1 = texture(iChannel0, uvT0).rg;
-    float noise2 = texture(iChannel1, uvT1).r;
-    
-    vec2 c = 1.0-abs(sin((uvS+noise1)*10.0));
-    c=exp(log(c)*2.0);
-    
-    float v = c.x * c.y * max(0.0, noise2);
-    
-    return v;
-}
-
-float Blur(vec2 fragCoord) {
-    float c0 = 1.0, c1 = 2.0, c2 = 1.0;
-    float c3 = 2.0, c4 = 4.0, c5 = 2.0;
-    float c6 = 1.0, c7 = 2.0, c8 = 1.0;
-    float k1 = 0.1;
-    
-    float s0 = c0 * Fetch(vec2(-1,-1), fragCoord);
-    float s1 = c1 * Fetch(vec2( 0,-1), fragCoord);
-    float s2 = c2 * Fetch(vec2( 1,-1), fragCoord);
-    float s3 = c3 * Fetch(vec2(-1, 0), fragCoord);
-    float s4 = c4 * Fetch(vec2( 1, 0), fragCoord);
-    float s5 = c5 * Fetch(vec2( 0, 0), fragCoord);
-    float s6 = c6 * Fetch(vec2(-1, 1), fragCoord);
-    float s7 = c7 * Fetch(vec2( 0, 1), fragCoord);
-    float s8 = c8 * Fetch(vec2( 1, 1), fragCoord);
-    float st = (s0+s1+s2+s3+s4+s5+s6+s7+s8);    
-    
-    return k1*st;
-}
-
-#define DEG2RAD 0.0174533
-void mainImage( out vec4 fragColor, in vec2 fragCoord )
-{
-    vec2 uv = (fragCoord/iResolution.xy) * 2.0 - 1.0;
-    
-    vec3 origin = vec3(0,0,0);
-    float yaw = 0.0;
-    float pitch = 20.0 * DEG2RAD;
-    
-    pitch += abs(pow(uv.x,2.0) * 3.0 * DEG2RAD);
-    yaw = pow(uv.x,2.0);
-    
-    vec2 look = vec2(yaw,pitch);
-    float fov_x = 150.0 * 0.5 * DEG2RAD;
-    vec2 fov = vec2(fov_x, fov_x * iResolution.y / iResolution.x);
-    vec2 tan_uv = uv * tan(fov);
-    vec2 ray_a = atan(tan_uv) + look;
-    vec3 ray = vec3(
-        cos(ray_a.x) * cos(ray_a.y),
-                       sin(ray_a.y),
-        sin(ray_a.x) * cos(ray_a.y)
-    );
-    
-    bool mirror = ray.y < 0.0;
-    ray.y=abs(ray.y);
-    
-    float start = 10000.0;
-    float end = 80000.0;
-    float brightness = 25.0;
-    
-    float fade_start = 100000.0;
-    float fade_end = 200000.0;
-    
-    float v= Blur(fragCoord);
-    
-    v = exp(log(v)*3.0)*7.0;
-    
-    float slope = clamp(length(ray.xz)/ray.y,0.0,1.0);
-        
-    float steps = clamp(25.0/(1.0-slope), 25.0, 200.0);
-    
-    vec3 outc = vec3(0,0,0);
-    float outv = 0.0;
-    
-    vec3 prevpoint = vec3(0,0,0);
-    float prevvalue = 0.0;
-    for(float i=0.0;i<=steps;i++)    
-    {    
-        float fi = i/steps;
-        float elevation = mix(start, end, fi);
-        
-        vec2 intersection = vec2(
-            elevation * ray.x / ray.y,
-            elevation * ray.z / ray.y);
-        vec3 curpoint = vec3(intersection.x, elevation, intersection.y);
-            
-        float h_distance = length(intersection);
-        float coef = 1.0;
-            
-        if (h_distance > fade_end)
-        {
-            continue;
-        }
-        if (h_distance > fade_start)
-        {
-            coef = 1.0 - (h_distance-fade_start)/(fade_end-fade_start);
-        }
-        
-        vec3 timeOffset = iTime * vec3(0.025, 0.0, -0.25);        
-        vec2 xzOffset = intersection * 0.000005 + timeOffset.xz;
-        float yOffset = fi*0.01 + noiseOctaves(xzOffset) * 1.35 + timeOffset.y;
-
-        vec3 posOffset = vec3(xzOffset, yOffset);
-            
-        float hue = noiseOctaves(timeOffset + posOffset + vec3(3.13,2.35,0.0));
-        float value = abs(hue);
-        
-        hue = hue * 15.0 - fi;
-        
-        value = clamp(2.5-value*50.0,0.0,1.0);
-        
-        value = coef * (brightness / steps) * min(i,1.0) * (1.0-pow(fi,0.15)) * value;               
-        
-        float curvalue = value;
-        
-        if (i > 0.0)
-        {
-            float base = length(curpoint-prevpoint) * 0.0007;
-            
-            float mn = min(value,prevvalue);
-            float mx = max(value,prevvalue);
-            float area = base * (mx+mn) * 0.5;
-            
-            value = area;
-        
-            vec3 color = hue >= 0.0 ? mix(vec3(0,1,0),vec3(0,0,1),hue) : mix(vec3(0,1,0),vec3(1,0,1),-hue);
-            outc += value * color;
-            outv += value;
-        }
-        prevvalue = curvalue;
-        prevpoint = curpoint;
+    float noise(float x) {
+        float i = floor(x);
+        float f = fract(x);
+        float u = f * f * (3.0 - 2.0 * f);
+        return mix(hash(i), hash(i + 1.0), u)-0.5;
     }
-    
-    float cyan = max(0.0, outv-1.0);
-    float white = max(0.0, outv-2.0);
-    
-    outc = vec3(
-        outc.x + white,
-        outc.y,
-        outc.z + cyan
-    );
-    
-    outc = mix(vec3(v,v,v), outc * 0.6, sqrt(outv));
-    
-    if (mirror)
-    {
-        outc = outc * vec3(0.25,0.30,0.75) + vec3(0.0,0.1,0.35);
-    }    
-    
-    fragColor = vec4(outc,1.0);
-}
 
-void main() {
-    mainImage(gl_FragColor, gl_FragCoord.xy);
-}
+    float noise(vec2 x) {
+        vec2 i = floor(x);
+        vec2 f = fract(x);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+                   mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y)-0.5;
+    }
+
+    float noise(vec3 x) {
+        const vec3 step = vec3(110, 241, 171);
+        vec3 i = floor(x);
+        vec3 f = fract(x);
+        float n = dot(i, step);
+        vec3 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(mix( hash(n + dot(step, vec3(0, 0, 0))), hash(n + dot(step, vec3(1, 0, 0))), u.x),
+                       mix( hash(n + dot(step, vec3(0, 1, 0))), hash(n + dot(step, vec3(1, 1, 0))), u.x), u.y),
+                   mix(mix( hash(n + dot(step, vec3(0, 0, 1))), hash(n + dot(step, vec3(1, 0, 1))), u.x),
+                       mix( hash(n + dot(step, vec3(0, 1, 1))), hash(n + dot(step, vec3(1, 1, 1))), u.x), u.y), u.z)-0.5;
+    }
+
+    float noiseOctaves(vec2 x) {
+        return noise(x) + 
+            noise(x*2.0+x)*0.5 + 
+            noise(x*4.0+x*2.0)*0.25 + 
+            noise(x*8.0+x*4.0)*0.125;
+    }
+
+    float noiseOctaves(vec3 x) {
+        return noise(x) + 
+            noise(x*2.0+x)*0.5 + 
+            noise(x*4.0+x*2.0)*0.25 + 
+            noise(x*8.0+x*4.0)*0.125;
+    }
+
+    // STARFIELD
+    float Fetch(vec2 uvDisp, vec2 fragCoord) {
+        vec2 uvS = (fragCoord.xy+uvDisp);
+        vec2 uv = (fragCoord.xy+uvDisp) / iResolution.xy;
+        vec2 uvT0 = uvS / vec2(256.0, 256.0);
+        vec2 uvT1 = uvS / vec2(256.0, 256.0);
+        
+        vec2 noise1 = texture(iChannel0, uvT0).rg;
+        float noise2 = texture(iChannel1, uvT1).r;
+        
+        vec2 c = 1.0-abs(sin((uvS+noise1)*10.0));
+        c=exp(log(c)*2.0);
+        
+        float v = c.x * c.y * max(0.0, noise2);
+        
+        return v;
+    }
+
+    float Blur(vec2 fragCoord) {
+        float c0 = 1.0, c1 = 2.0, c2 = 1.0;
+        float c3 = 2.0, c4 = 4.0, c5 = 2.0;
+        float c6 = 1.0, c7 = 2.0, c8 = 1.0;
+        float k1 = 0.1;
+        
+        float s0 = c0 * Fetch(vec2(-1,-1), fragCoord);
+        float s1 = c1 * Fetch(vec2( 0,-1), fragCoord);
+        float s2 = c2 * Fetch(vec2( 1,-1), fragCoord);
+        float s3 = c3 * Fetch(vec2(-1, 0), fragCoord);
+        float s4 = c4 * Fetch(vec2( 1, 0), fragCoord);
+        float s5 = c5 * Fetch(vec2( 0, 0), fragCoord);
+        float s6 = c6 * Fetch(vec2(-1, 1), fragCoord);
+        float s7 = c7 * Fetch(vec2( 0, 1), fragCoord);
+        float s8 = c8 * Fetch(vec2( 1, 1), fragCoord);
+        float st = (s0+s1+s2+s3+s4+s5+s6+s7+s8);    
+        
+        return k1*st;
+    }
+
+    #define DEG2RAD 0.0174533
+    void mainImage( out vec4 fragColor, in vec2 fragCoord )
+    {
+        vec2 uv = (fragCoord/iResolution.xy) * 2.0 - 1.0;
+        
+        vec3 origin = vec3(0,0,0);
+        float yaw = 0.0;
+        float pitch = 20.0 * DEG2RAD;
+        
+        pitch += abs(pow(uv.x,2.0) * 3.0 * DEG2RAD);
+        yaw = pow(uv.x,2.0);
+        
+        vec2 look = vec2(yaw,pitch);
+        float fov_x = 150.0 * 0.5 * DEG2RAD;
+        vec2 fov = vec2(fov_x, fov_x * iResolution.y / iResolution.x);
+        vec2 tan_uv = uv * tan(fov);
+        vec2 ray_a = atan(tan_uv) + look;
+        vec3 ray = vec3(
+            cos(ray_a.x) * cos(ray_a.y),
+                           sin(ray_a.y),
+            sin(ray_a.x) * cos(ray_a.y)
+        );
+        
+        bool mirror = ray.y < 0.0;
+        ray.y=abs(ray.y);
+        
+        float start = 10000.0;
+        float end = 80000.0;
+        float brightness = 25.0;
+        
+        float fade_start = 100000.0;
+        float fade_end = 200000.0;
+        
+        float v= Blur(fragCoord);
+        
+        v = exp(log(v)*3.0)*7.0;
+        
+        float slope = clamp(length(ray.xz)/ray.y,0.0,1.0);
+            
+        float steps = clamp(25.0/(1.0-slope), 25.0, 200.0);
+        
+        vec3 outc = vec3(0,0,0);
+        float outv = 0.0;
+        
+        vec3 prevpoint = vec3(0,0,0);
+        float prevvalue = 0.0;
+        for(float i=0.0;i<=steps;i++)    
+        {    
+            float fi = i/steps;
+            float elevation = mix(start, end, fi);
+            
+            vec2 intersection = vec2(
+                elevation * ray.x / ray.y,
+                elevation * ray.z / ray.y);
+            vec3 curpoint = vec3(intersection.x, elevation, intersection.y);
+                
+            float h_distance = length(intersection);
+            float coef = 1.0;
+                
+            if (h_distance > fade_end)
+            {
+                continue;
+            }
+            if (h_distance > fade_start)
+            {
+                coef = 1.0 - (h_distance-fade_start)/(fade_end-fade_start);
+            }
+            
+            vec3 timeOffset = iTime * vec3(0.025, 0.0, -0.25);        
+            vec2 xzOffset = intersection * 0.000005 + timeOffset.xz;
+            float yOffset = fi*0.01 + noiseOctaves(xzOffset) * 1.35 + timeOffset.y;
+
+            vec3 posOffset = vec3(xzOffset, yOffset);
+                
+            float hue = noiseOctaves(timeOffset + posOffset + vec3(3.13,2.35,0.0));
+            float value = abs(hue);
+            
+            hue = hue * 15.0 - fi;
+            
+            value = clamp(2.5-value*50.0,0.0,1.0);
+            
+            value = coef * (brightness / steps) * min(i,1.0) * (1.0-pow(fi,0.15)) * value;               
+            
+            float curvalue = value;
+            
+            if (i > 0.0)
+            {
+                float base = length(curpoint-prevpoint) * 0.0007;
+                
+                float mn = min(value,prevvalue);
+                float mx = max(value,prevvalue);
+                float area = base * (mx+mn) * 0.5;
+                
+                value = area;
+            
+                vec3 color = hue >= 0.0 ? mix(vec3(0,1,0),vec3(0,0,1),hue) : mix(vec3(0,1,0),vec3(1,0,1),-hue);
+                outc += value * color;
+                outv += value;
+            }
+            prevvalue = curvalue;
+            prevpoint = curpoint;
+        }
+        
+        float cyan = max(0.0, outv-1.0);
+        float white = max(0.0, outv-2.0);
+        
+        outc = vec3(
+            outc.x + white,
+            outc.y,
+            outc.z + cyan
+        );
+        
+        outc = mix(vec3(v,v,v), outc * 0.6, sqrt(outv));
+        
+        if (mirror)
+        {
+            outc = outc * vec3(0.25,0.30,0.75) + vec3(0.0,0.1,0.35);
+        }    
+        
+        fragColor = vec4(outc,1.0);
+    }
+
+    void main() {
+        mainImage(gl_FragColor, gl_FragCoord.xy);
+    }
     </script>
 
     <script id="vertexShader" type="x-shader/x-vertex">
-void main() {
-    gl_Position = vec4( position, 1.0 );
-}
+    void main() {
+        gl_Position = vec4( position, 1.0 );
+    }
     </script>
 
     <script>
@@ -400,7 +417,7 @@ void main() {
         const mesh = new THREE.Mesh( geometry, material );
         scene.add( mesh );
 
-        renderer = new THREE.WebGLRenderer();
+        renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio( window.devicePixelRatio );
         document.body.appendChild( renderer.domElement );
 
@@ -460,6 +477,27 @@ void main() {
         isSecondModalOpen = false;
         secondModal.classList.remove('active');
     });
+
+    // Optimize shader performance for mobile
+    function optimizeShaderForMobile() {
+        const fragmentShader = document.getElementById('fragmentShader');
+        let shaderCode = fragmentShader.textContent;
+        
+        // Reduce the number of steps in the main loop
+        shaderCode = shaderCode.replace(/float steps = clamp$$25\.0\/\(1\.0-slope$$, 25\.0, 200\.0\);/, 
+                                        'float steps = clamp(15.0/(1.0-slope), 15.0, 100.0);');
+        
+        // Simplify noise function for mobile
+        shaderCode = shaderCode.replace(/float noiseOctaves$$vec(.) x$$ {[\s\S]*?}/, 
+                                        'float noiseOctaves(vec$1 x) { return noise(x); }');
+        
+        fragmentShader.textContent = shaderCode;
+    }
+
+    // Check if it's a mobile device
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        optimizeShaderForMobile();
+    }
 
     animate();
     </script>

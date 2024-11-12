@@ -105,8 +105,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(45deg, #000033, #000066);
-            z-index: -1;
+            background-color: #1a0033;
+            z-index: -3;
         }
         .mobile-stars {
             position: absolute;
@@ -115,20 +115,39 @@
             width: 100%;
             height: 100%;
             background-image: 
-                radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 50px 160px, #ffffff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 130px 80px, #ffffff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 160px 120px, #ffffff, rgba(0,0,0,0));
+                radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 50px 160px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 90px 40px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 130px 80px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 160px 120px, #ffffff, rgba(0,0,0,0));
             background-repeat: repeat;
             background-size: 200px 200px;
             animation: twinkle 5s infinite;
+            z-index: -2;
         }
         @keyframes twinkle {
             0% { opacity: 0.5; }
             50% { opacity: 1; }
             100% { opacity: 0.5; }
+        }
+        .mobile-aurora {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, 
+                rgba(0, 255, 0, 0.1), 
+                rgba(0, 255, 255, 0.1), 
+                rgba(128, 0, 128, 0.1));
+            filter: blur(50px);
+            animation: aurora 20s infinite alternate;
+            z-index: -1;
+        }
+        @keyframes aurora {
+            0% { transform: translateX(-25%) translateY(-25%); }
+            100% { transform: translateX(25%) translateY(25%); }
         }
         .mobile-content {
             position: relative;
@@ -442,6 +461,7 @@
         document.body.innerHTML = `
             <div class="mobile-background"></div>
             <div class="mobile-stars"></div>
+            <div class="mobile-aurora"></div>
             <div class="mobile-content">
                 <h1 class="mobile-title">Aurora Gracewood</h1>
                 <button class="mobile-button" id="mobileOpenModal">View Links</button>
@@ -505,6 +525,22 @@
             link.style.color = '#00ffff';
             link.style.textDecoration = 'none';
         }
+
+        // Add iframe to mobile version
+        const iframeContainer = document.createElement('div');
+        iframeContainer.style.width = '100%';
+        iframeContainer.style.height = '80vh';
+        iframeContainer.style.marginTop = '20px';
+
+        const iframe = document.createElement('iframe');
+        iframe.src = 'https://chat.mistral.ai/chat/0a8ed107-b70b-446f-8cb4-040ddc76a1f3';
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.border = 'none';
+
+        iframeContainer.appendChild(iframe);
+        document.body.appendChild(iframeContainer);
+
     } else {
         // Desktop version (unchanged)
         init();

@@ -7,6 +7,19 @@
   <link rel="icon" type="image/png" href="/assets/logo.png" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="/account/auth.css" />
+  <script>
+    // GitHub Pages mirrors the entire repo at aurora-gracewood.com (apex), which
+    // means a static copy of this page is served at aurora-gracewood.com/awards/
+    // with NO FastAPI behind it (no /api/me, no real auth). Anyone landing there
+    // gets bounced to the working dynamic copy on rewards.aurora-gracewood.com,
+    // preserving the path/query/hash so deep links survive.
+    (function () {
+      if (window.location.hostname === 'aurora-gracewood.com') {
+        window.location.replace('https://rewards.aurora-gracewood.com'
+          + window.location.pathname + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
 </head>
 <body>
   <canvas id="aurora-canvas" aria-hidden="true"></canvas>

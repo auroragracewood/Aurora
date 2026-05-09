@@ -6,6 +6,15 @@
   <title>Account — Aurora Gracewood</title>
   <link rel="icon" type="image/png" href="/assets/logo.png" />
   <link rel="stylesheet" href="auth.css" />
+  <script>
+    // Apex GitHub Pages mirror — bounce to working backend on rewards subdomain.
+    (function () {
+      if (window.location.hostname === 'aurora-gracewood.com') {
+        window.location.replace('https://rewards.aurora-gracewood.com'
+          + window.location.pathname + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
   <style>
     * { box-sizing: border-box; }
     body {

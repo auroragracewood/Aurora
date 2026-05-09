@@ -1,0 +1,103 @@
+:root{
+  --bg:#090b14; --panel:#111727; --panel2:#151d31; --text:#f6f7fb; --muted:#aeb8cc;
+  --cyan:#45d9ff; --pink:#ff8fd8; --orange:#ffb469; --purple:#8d6bff; --line:rgba(255,255,255,.12);
+  --shadow:0 24px 80px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:radial-gradient(circle at top left,rgba(69,217,255,.08),transparent 28%),radial-gradient(circle at 80% 10%,rgba(255,143,216,.08),transparent 24%),linear-gradient(180deg,#02030a,#050816 50%,#01020a);color:var(--text);position:relative;min-height:100vh}#aurora-canvas{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;display:block}
+a{color:inherit}.hero{padding:24px;min-height:84vh}.nav{display:flex;justify-content:space-between;align-items:center;gap:16px;max-width:1180px;margin:auto}.brand{display:flex;gap:12px;align-items:center}.brand-mark{width:48px;height:48px;border-radius:50%;display:block;object-fit:cover;box-shadow:0 0 40px rgba(115,140,94,.45)}.brand span{display:block;color:var(--muted);font-size:.85rem}.nav-cta,.button{border:1px solid var(--line);border-radius:999px;padding:12px 18px;text-decoration:none;font-weight:700;background:rgba(255,255,255,.06)}.button{cursor:pointer}.primary{background:linear-gradient(135deg,var(--cyan),var(--pink));color:#08101b;border:0}.ghost:hover,.nav-cta:hover{background:rgba(255,255,255,.1)}.hero-grid{max-width:1180px;margin:96px auto 0;display:grid;grid-template-columns:1.35fr .65fr;gap:32px;align-items:center}.eyebrow{color:var(--cyan);text-transform:uppercase;letter-spacing:.18em;font-size:.78rem;font-weight:800}h1{font-size:clamp(2.4rem,7vw,5.8rem);line-height:.95;margin:0 0 24px;letter-spacing:-.06em}h2{font-size:clamp(1.8rem,4vw,3rem);line-height:1;margin:0 0 14px}.lead{font-size:1.18rem;color:var(--muted);max-width:720px;line-height:1.65}.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.status-card,.award-card,.panel,.trust-grid article{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);backdrop-filter:blur(18px)}.status-card{padding:28px;position:relative;overflow:hidden}.status-card>*:not(.status-card-art){position:relative;z-index:1}.status-card ul{padding-left:20px;color:var(--muted);line-height:1.8}.status-card-art{position:absolute;inset:0;pointer-events:none;z-index:0}.status-card-art .halo{position:absolute;border-radius:50%;filter:blur(38px);opacity:.5}.status-card-art .halo-1{width:220px;height:220px;top:-60px;right:-50px;background:var(--cyan)}.status-card-art .halo-2{width:180px;height:180px;bottom:-40px;left:-30px;background:var(--pink)}.status-card-art .halo-3{width:140px;height:140px;top:40%;left:40%;background:var(--orange);opacity:.32}.status-card-logo{position:absolute;top:-34px;right:-34px;width:200px;height:200px;opacity:.22;pointer-events:none}.section{max-width:1180px;margin:0 auto;padding:70px 24px}.section-title{max-width:820px;margin-bottom:28px}.section-title p{color:var(--muted);line-height:1.6}.award-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.award-card{padding:18px}.badge-slot{height:170px;border:1px dashed rgba(255,255,255,.24);border-radius:22px;display:grid;place-items:center;color:var(--muted);background:radial-gradient(circle at center,rgba(69,217,255,.13),transparent 65%);margin-bottom:18px;text-align:center}.award-card h3{margin:0 0 8px}.award-tier{color:var(--pink);font-weight:800;margin:0 0 8px}.award-description{color:var(--muted);line-height:1.5}.award-meta{display:block;color:#d8def0;border-top:1px solid var(--line);padding-top:12px}.accordion{display:grid;gap:14px}.panel{overflow:hidden}.panel-header{width:100%;display:flex;justify-content:space-between;gap:18px;align-items:center;background:transparent;color:var(--text);border:0;padding:24px;text-align:left;cursor:pointer}.panel-title{font-size:1.25rem}.panel-subtitle{display:block;color:var(--muted);margin-top:6px}.panel-price{font-style:normal;color:var(--orange);font-weight:900}.panel-body{display:none;border-top:1px solid var(--line);padding:24px;background:rgba(0,0,0,.14)}.panel.open .panel-body{display:block}.panel.open .panel-header{background:linear-gradient(135deg,rgba(69,217,255,.18),rgba(255,143,216,.10));border-bottom:1px solid var(--line)}.panel.open .panel-title{color:var(--cyan)}.panel.open .panel-price{color:var(--pink)}.form-intro{color:var(--muted);line-height:1.6;margin-bottom:18px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:grid;gap:7px}.field.full{grid-column:1/-1}label{font-weight:700}.field input,.field select,.field textarea{width:100%;background:#080b14;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font:inherit}.field textarea{min-height:110px;resize:vertical}.requirements{margin:20px 0;padding:18px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.04)}.requirements h4{margin:0 0 10px}.requirements ul{margin:0;padding-left:20px;color:var(--muted);line-height:1.7}.checkbox-line{display:flex;gap:10px;align-items:flex-start;color:var(--muted);font-weight:500;margin:10px 0}.payment-box{margin-top:22px;display:flex;justify-content:space-between;gap:18px;align-items:center;border-radius:22px;padding:18px;background:linear-gradient(135deg,rgba(69,217,255,.1),rgba(255,143,216,.08));border:1px solid var(--line)}.payment-box p{color:var(--muted);margin:.35rem 0 0}.trust-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.trust-grid article{padding:20px}.trust-grid p{color:var(--muted);line-height:1.5}.footer{text-align:center;color:var(--muted);padding:50px 24px;border-top:1px solid var(--line)}
+@media(max-width:880px){.hero-grid,.award-grid,.trust-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.payment-box,.panel-header{flex-direction:column;align-items:flex-start}.hero{padding:16px}.section{padding:48px 16px}}
+
+/* Year stamp on each award card — small uppercase label above the
+   award name, dynamically filled by app.js. */
+.award-year {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: .68rem; font-weight: 800;
+  letter-spacing: .22em; text-transform: uppercase;
+  color: #08101b;
+  background: linear-gradient(135deg, var(--cyan), var(--pink));
+}
+
+/* Recognition tiers section — three cards (Winner / Finalist / Honoree)
+   with distinct gradient identities so each tier reads as its own kind
+   of recognition, not interchangeable variants. */
+.recognition-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.tier-card {
+  position: relative;
+  overflow: hidden;
+}
+.tier-card .tier-eyebrow {
+  display: inline-block;
+  margin: 0 0 12px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: .68rem; font-weight: 800;
+  letter-spacing: .22em; text-transform: uppercase;
+  color: #08101b;
+}
+.tier-winner .tier-eyebrow {
+  background: linear-gradient(135deg, #c47a4a, #ffb469);
+}
+.tier-finalist .tier-eyebrow {
+  background: linear-gradient(135deg, var(--cyan), var(--pink));
+}
+.tier-honoree .tier-eyebrow {
+  background: linear-gradient(135deg, #8d6bff, var(--pink));
+}
+.tier-card h3 {
+  font-size: 1.6rem;
+  margin: 0 0 8px;
+  letter-spacing: -.02em;
+}
+.tier-winner h3   { color: #ffb469; }
+.tier-finalist h3 { color: var(--cyan); }
+.tier-honoree h3  { color: #b89aff; }
+.tier-card .tier-meta {
+  font-size: .82rem;
+  color: var(--muted);
+  margin: 0 0 14px;
+  font-weight: 600;
+}
+.tier-card > p:last-child {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+@media (max-width: 880px) {
+  .recognition-grid { grid-template-columns: 1fr; }
+}
+
+/* Auth chip slot in the nav (mounted by AGAuth.installNav). */
+.nav-right { display: flex; gap: 10px; align-items: center; }
+
+/* When the user is logged out, form inputs/textareas/selects render
+   with a slightly muted look so they read as "preview only" — Pattern A.
+   The submit button's label flips to "Sign in to submit" via JS. */
+.submission-form.is-gated input,
+.submission-form.is-gated textarea,
+.submission-form.is-gated select { opacity: .7; }
+.submission-form.is-gated .checkbox-line { opacity: .7; }
+.submission-form .gate-banner {
+  margin: 0 0 18px; padding: 12px 16px;
+  border: 1px solid rgba(69,217,255,.32);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(69,217,255,.10), rgba(255,143,216,.06));
+  color: var(--text);
+  font-size: .92rem; line-height: 1.5;
+  display: none;
+}
+.submission-form.is-gated .gate-banner { display: block; }
+.submission-form .gate-banner strong { color: var(--cyan); }
+.submission-form .gate-banner button {
+  margin-top: 8px;
+  background: linear-gradient(135deg, var(--cyan), var(--pink));
+  color: #08101b; border: 0; border-radius: 999px;
+  padding: 9px 18px; font: inherit; font-weight: 800;
+  cursor: pointer;
+}
+.submission-form .gate-banner button:hover { filter: brightness(1.08); }

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Aurora Gracewood</title>
+<style>
+  body{margin:0;font-family:Inter,system-ui,sans-serif;background:#0a0a0e;color:#f6f7fb;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .card{background:#1c1f2a;border:1px solid rgba(255,255,255,.08);padding:40px;max-width:420px;width:100%;}
+  h1{margin:0 0 8px;font-size:1.6rem;color:#a3e3c1;letter-spacing:-.01em;}
+  h2{margin:24px 0 12px;font-size:.85rem;letter-spacing:.12em;text-transform:uppercase;color:#c47a4a;font-weight:800;}
+  form{display:flex;flex-direction:column;gap:8px;}
+  input{background:#0a0a0e;border:1px solid rgba(255,255,255,.12);color:#f6f7fb;padding:10px 12px;font:inherit;font-size:.9rem;}
+  input:focus{outline:0;border-color:#a3e3c1;}
+  button{background:rgba(163,227,193,.14);border:1px solid #a3e3c1;color:#a3e3c1;padding:10px;font:inherit;font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:ui-monospace,monospace;margin-top:4px;}
+  button:hover{background:rgba(163,227,193,.24);}
+  .status{font-size:.82rem;margin-top:8px;color:#a3e3c1;line-height:1.5;}
+  .status.err{color:#f4cfd9;}
+  .small{font-size:.72rem;color:rgba(246,247,251,.5);margin-top:8px;}
+  hr{border:0;border-top:1px solid rgba(255,255,255,.06);margin:24px 0;}
+  .role{display:inline-block;padding:2px 8px;background:#4a3578;color:#f4cfd9;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;font-weight:800;}
+  .role-superuser{background:#c47a4a;color:#0a0a0e;}
+  .role-admin{background:#a3e3c1;color:#0a0a0e;}
+  table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:12px;}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06);}
+  th{color:#c47a4a;font-weight:800;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;}
+</style>
+</head>
+<body>
+<div class="card" id="app">loading...</div>
+<script>
+async function init(){
+  try{
+    const r = await fetch("/api/me");
+    if(r.ok){ renderAccount(await r.json()); return; }
+  }catch{}
+  renderLanding();
+}
+function el(id){ return document.getElementById(id); }
+function renderLanding(){
+  el("app").innerHTML =
+    '<h1>Aurora Gracewood</h1>' +
+    '<p class="small">Awards, recognition, and editorial.</p>' +
+    '<h2>Sign up</h2>' +
+    '<form id="signupForm"><input type="email" name="email" placeholder="your email" required /><button type="submit">Send verification link</button></form>' +
+    '<p class="status" id="signupStatus"></p>' +
+    '<hr/>' +
+    '<h2>Sign in</h2>' +
+    '<form id="signinForm"><input type="email" name="email" placeholder="email" required /><input type="password" name="password" placeholder="password" required /><button type="submit">Sign in</button></form>' +
+    '<p class="status" id="signinStatus"></p>';
+  el("signupForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const r = await fetch("/api/signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:e.target.email.value})});
+    const d = await r.json();
+    el("signupStatus").className = "status" + (r.ok ? "" : " err");
+    el("signupStatus").textContent = d.message || d.detail || "Error";
+  };
+  el("signinForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const r = await fetch("/api/signin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:e.target.email.value,password:e.target.password.value})});
+    const d = await r.json();
+    if(r.ok){ window.location = d.redirect || "/account"; return; }
+    el("signinStatus").className = "status err";
+    el("signinStatus").textContent = d.detail || "Error";
+  };
+}
+async function renderAccount(user){
+  el("app").innerHTML =
+    '<h1>' + (user.username || user.email) + '</h1>' +
+    '<p class="small">Email: ' + user.email + '<br/>Role: <span class="role role-' + user.role + '">' + user.role + '</span></p>' +
+    '<hr/>' +
+    '<button onclick="signout()">Sign out</button>' +
+    '<div id="adminPanel"></div>';
+  if(user.role === "admin" || user.role === "superuser"){
+    const r = await fetch("/api/admin/users");
+    if(r.ok){
+      const users = await r.json();
+      el("adminPanel").innerHTML = '<hr/><h2>All accounts</h2><table><tr><th>Email</th><th>Username</th><th>Role</th><th>Status</th></tr>' +
+        users.map(u => '<tr><td>' + u.email + '</td><td>' + (u.username||"") + '</td><td><span class="role role-' + u.role + '">' + u.role + '</span></td><td>' + u.status + '</td></tr>').join("") +
+        '</table>';
+    }
+  }
+}
+async function signout(){
+  await fetch("/api/signout",{method:"POST"});
+  window.location.reload();
+}
+init();
+</script>
+</body>
+</html>

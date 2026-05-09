@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aurora Gracewood</title>
+  <meta name="description" content="Aurora Gracewood — notice, name, recognize." />
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+  <link rel="stylesheet" href="splash.css" />
+</head>
+<body>
+  <!-- Hidden SVG filter — applies an animated turbulence-based displacement
+       to the ENTER button's gradient. Three SMIL animations (seed,
+       baseFrequency, scale) on coprime durations produce a wave that
+       never repeats cleanly — the "random" undulation requested. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <filter id="enterWave" x="-25%" y="-25%" width="150%" height="150%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.005 0.014" numOctaves="1" seed="0" result="noise">
+          <animate attributeName="seed" values="0;30;70;130;200;280" dur="60s" repeatCount="indefinite"/>
+          <animate attributeName="baseFrequency" values="0.005 0.012; 0.006 0.016; 0.005 0.014; 0.007 0.018; 0.005 0.012" dur="48s" repeatCount="indefinite"/>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="11">
+          <animate attributeName="scale" values="9;13;10;15;11;14;9" dur="42s" repeatCount="indefinite"/>
+        </feDisplacementMap>
+      </filter>
+    </defs>
+  </svg>
+
+  <main class="stage" aria-label="Aurora Gracewood">
+    <div class="stars" aria-hidden="true"></div>
+
+    <!-- Misty cloud glow layer — soft, diffuse, sits behind the moon. -->
+    <div class="clouds" aria-hidden="true">
+      <span class="cloud cloud-1"></span>
+      <span class="cloud cloud-2"></span>
+      <span class="cloud cloud-3"></span>
+      <span class="cloud cloud-4"></span>
+    </div>
+
+    <div class="moon-wrap" aria-hidden="true">
+      <div class="moon-halo"></div>
+      <div class="moon"></div>
+      <!-- Real moon texture overlaid on the gradient at ~55% opacity so the
+           gradient still bleeds through. Replace src with any other moon
+           map at any time. -->
+      <img class="moon-map" src="assets/moon-map.jpg" alt="" loading="lazy" />
+      <div class="moon-shimmer"></div>
+    </div>
+
+    <!-- True aurora curtains — horizontal color ribbons with vertical fade
+         masks. They sit IN FRONT of the moon so the moon shines through them. -->
+    <div class="aurora-curtains" aria-hidden="true">
+      <span class="curtain curtain-1"></span>
+      <span class="curtain curtain-2"></span>
+      <span class="curtain curtain-3"></span>
+    </div>
+
+    <!-- Misty cloud glow layer — soft, diffuse, in FRONT of curtains for depth. -->
+    <div class="aurora-bands" aria-hidden="true">
+      <span class="band band-1"></span>
+      <span class="band band-2"></span>
+      <span class="band band-3"></span>
+    </div>
+
+    <!-- Vivid aurora rays — vertical dancing ribbons. This is the layer
+         that explicitly LOOKS like aurora: vertical color streamers,
+         green at base fading to pink up top, swaying horizontally,
+         pulsing in intensity. Sits between the misty layers and content. -->
+    <div class="aurora-real" aria-hidden="true">
+      <span class="ray ray-1"></span>
+      <span class="ray ray-2"></span>
+      <span class="ray ray-3"></span>
+      <span class="ray ray-4"></span>
+      <span class="ray ray-5"></span>
+      <span class="ray ray-6"></span>
+      <span class="ray ray-7"></span>
+      <span class="ray ray-8"></span>
+      <span class="ray ray-9"></span>
+      <span class="ray ray-10"></span>
+    </div>
+
+    <!-- Forest horizon — uses the supplied treeline.png (1536×400 RGBA
+         transparent). Mist wash sits behind for atmospheric softness.
+         z-index 5 — behind content (z-index 6), in front of aurora. -->
+    <div class="forest" aria-hidden="true">
+      <div class="forest-mist"></div>
+      <div class="forest-image"></div>
+    </div>
+
+    <div class="content">
+      <p class="overline">Welcome</p>
+      <h1 class="wordmark">
+        <span class="line-1">AURORA</span>
+        <span class="line-2">GRACEWOOD</span>
+      </h1>
+      <p class="tagline">Notice. Name. Recognize.</p>
+      <a class="enter" href="/site/">
+        <span class="enter-label">Enter</span>
+        <span class="enter-arrow" aria-hidden="true">→</span>
+      </a>
+    </div>
+
+    <a class="lineage" href="https://www.greatcreations.art/" target="_blank" rel="noopener" aria-label="A Great Creations brand"><span class="word-a">A</span> <span class="phrase-gc"><span class="word-great">Great</span> <span class="word-creations">Creations</span></span> <span class="word-brand">brand</span></a>
+  </main>
+</body>
+</html>

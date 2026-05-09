@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Notification Preferences · Aurora Gracewood</title>
+<link rel="stylesheet" href="/account/realm.css" />
+<script src="/account/realm.js"></script>
+
+</head>
+<body>
+<div class="layout">
+  <div class="realm-banner admin">
+    <span>ADMIN REALM · Notification Preferences</span>
+    <span class="as-info">acting as user_id=<span id="as-display"></span></span>
+  </div>
+  <nav class="nav">
+    <a data-realm-link href="/admin/admin">Profile</a>
+<a data-realm-link href="/admin/profile-edit">Edit profile</a>
+<a data-realm-link href="/admin/notifications">Notifications</a>
+<a data-realm-link href="/admin/activity">Activity (mine)</a>
+<a data-realm-link href="/admin/messages">Messages</a>
+<a data-realm-link href="/admin/clients">Clients</a>
+  </nav>
+  
+<section class="card">
+  <h2>Notification preferences</h2>
+  <table id="prefs-table"><thead><tr><th>Channel</th><th>Email</th><th>SMS</th><th>In-app</th></tr></thead><tbody></tbody></table>
+  <div style="margin-top:14px"><button class="btn" id="save-btn">Save</button></div>
+  <div class="status" id="save-status"></div>
+</section>
+<script>
+let PREFS = [];
+(async () => {
+  PREFS = await AURORA.api("GET", "/api/notifications/preferences");
+  const tb = document.querySelector("#prefs-table tbody");
+  tb.innerHTML = PREFS.map((p,i) =>
+    '<tr><td>' + p.channel + '</td>' +
+    '<td><input type="checkbox" data-i="'+i+'" data-f="via_email" '+(p.via_email?'checked':'')+'></td>' +
+    '<td><input type="checkbox" data-i="'+i+'" data-f="via_sms" '+(p.via_sms?'checked':'')+'></td>' +
+    '<td><input type="checkbox" data-i="'+i+'" data-f="via_inapp" '+(p.via_inapp?'checked':'')+'></td></tr>'
+  ).join("");
+})();
+AURORA.el("save-btn").onclick = async () => {
+  try {
+    document.querySelectorAll("[data-i]").forEach(cb => {
+      const i = parseInt(cb.dataset.i), f = cb.dataset.f;
+      PREFS[i][f] = cb.checked ? 1 : 0;
+    });
+    await AURORA.api("PUT", "/api/notifications/preferences", PREFS);
+    AURORA.setStatus("save-status", "Saved.", true);
+  } catch (e) { AURORA.setStatus("save-status", e.message, false); }
+};
+</script>
+
+</div>
+<script>
+  document.getElementById("as-display").textContent = AURORA.asId;
+</script>
+</body>
+</html>

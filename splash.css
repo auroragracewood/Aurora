@@ -1,0 +1,824 @@
+/* ============================================================
+   Aurora Gracewood — splash / billboard / brand-face
+   The moon through the aurora. Bold, large, shimmering.
+   No auth, no nav, no chrome — one stage, one entrance.
+   ============================================================ */
+
+:root {
+  /* Aurora primary */
+  --ag-light-pink: #f4cfd9;
+  --ag-blueberry: #4a5fc1;
+  --ag-moss: #738c5e;
+  /* GC family signal */
+  --gc-cyan: #45d9ff;
+  --gc-pink: #ff8fd8;
+  --gc-orange: #ffb469;
+  /* Universal */
+  --gc-grape: #6f4ea3;
+  --gc-midnight: #050816;
+  --gc-off-white: #f6f7fb;
+  --gc-copper: #c47a4a;
+  --gc-mint: #4a8d7a;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  height: 100%; margin: 0; padding: 0;
+  background: #02030a;
+  color: var(--gc-off-white);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  width: 100%; height: 100vh;
+  display: grid; place-items: center;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(74,95,193,.20), transparent 60%),
+    radial-gradient(circle at 20% 80%, rgba(115,140,94,.12), transparent 55%),
+    radial-gradient(circle at 80% 75%, rgba(244,207,217,.10), transparent 50%),
+    linear-gradient(180deg, #02030a 0%, #050816 50%, #01020a 100%);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* STARS — subtle dotted backdrop */
+.stars {
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1.4px 1.4px at 12% 18%, rgba(255,255,255,.85), transparent 50%),
+    radial-gradient(1.2px 1.2px at 22% 70%, rgba(255,255,255,.65), transparent 50%),
+    radial-gradient(1.6px 1.6px at 38% 30%, rgba(255,255,255,.75), transparent 50%),
+    radial-gradient(1.0px 1.0px at 56% 85%, rgba(255,255,255,.55), transparent 50%),
+    radial-gradient(1.5px 1.5px at 68% 22%, rgba(255,255,255,.85), transparent 50%),
+    radial-gradient(1.0px 1.0px at 78% 48%, rgba(255,255,255,.50), transparent 50%),
+    radial-gradient(1.4px 1.4px at 86% 78%, rgba(255,255,255,.70), transparent 50%),
+    radial-gradient(1.0px 1.0px at 92% 12%, rgba(255,255,255,.55), transparent 50%),
+    radial-gradient(1.2px 1.2px at 4% 50%, rgba(255,255,255,.50), transparent 50%),
+    radial-gradient(1.4px 1.4px at 48% 64%, rgba(255,255,255,.70), transparent 50%);
+  animation: starsTwinkle 6s ease-in-out infinite alternate;
+  z-index: 0;
+}
+@keyframes starsTwinkle { from { opacity: .55; } to { opacity: 1; } }
+
+/* MOON — bright disc, soft glow halo, a faint shimmering veil */
+.moon-wrap {
+  position: absolute;
+  top: 18%; left: 50%; transform: translateX(-50%);
+  width: clamp(280px, 38vw, 520px);
+  height: clamp(280px, 38vw, 520px);
+  z-index: 1;
+}
+.moon-halo {
+  position: absolute; inset: -28%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(244,207,217,.32) 0%, rgba(74,95,193,.18) 35%, transparent 70%);
+  filter: blur(28px);
+  animation: moonHalo 8s ease-in-out infinite alternate;
+}
+@keyframes moonHalo {
+  from { transform: scale(1); opacity: .85; }
+  to   { transform: scale(1.08); opacity: 1; }
+}
+.moon {
+  position: absolute; inset: 12%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 36%, #ffffff 0%, #f6f0e6 18%, #e8d7c3 48%, #b9a896 80%, #756a5d 100%);
+  box-shadow:
+    inset -22px -22px 60px rgba(20, 18, 22, .55),
+    inset 12px 14px 36px rgba(255, 250, 240, .3),
+    0 0 80px rgba(255, 244, 224, .35),
+    0 0 200px rgba(244, 207, 217, .22);
+}
+/* Subtle crater texture via layered radial gradients */
+.moon::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background:
+    radial-gradient(circle at 64% 28%, rgba(0,0,0,.15) 0%, transparent 5%),
+    radial-gradient(circle at 30% 50%, rgba(0,0,0,.10) 0%, transparent 4%),
+    radial-gradient(circle at 56% 68%, rgba(0,0,0,.12) 0%, transparent 5%),
+    radial-gradient(circle at 72% 78%, rgba(0,0,0,.08) 0%, transparent 3%),
+    radial-gradient(circle at 24% 80%, rgba(0,0,0,.09) 0%, transparent 3%);
+  mix-blend-mode: multiply;
+  opacity: .7;
+}
+/* Real moon texture overlaid on the gradient. Semi-transparent so the
+   underlying gradient (the warm glow + inset shadow) still shows through.
+   Blend mode `overlay` lets the texture's bright highlights add light to
+   the gradient and its dark crater shadows darken the gradient — a true
+   "see-through map on top of glowing sphere" effect. */
+.moon-map {
+  position: absolute; inset: 12%;
+  width: 76%; height: 76%;
+  border-radius: 50%;
+  object-fit: cover;
+  opacity: .55;
+  mix-blend-mode: overlay;
+  filter: contrast(1.08) saturate(.78);
+  pointer-events: none;
+}
+
+.moon-shimmer {
+  position: absolute; inset: 12%;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg,
+    transparent 0deg,
+    rgba(244,207,217,.18) 60deg,
+    transparent 120deg,
+    rgba(74,95,193,.16) 200deg,
+    transparent 260deg,
+    rgba(115,140,94,.14) 320deg,
+    transparent 360deg);
+  filter: blur(18px);
+  mix-blend-mode: screen;
+  animation: moonShimmer 14s linear infinite;
+  pointer-events: none;
+}
+@keyframes moonShimmer {
+  to { transform: rotate(360deg); }
+}
+
+/* CLOUDS — misty diffuse color glows BEHIND the moon. Very soft, very
+   slow, very high blur. Provides the "wow" ambient color without any
+   hard edges. Each cloud is a huge radial gradient with a long falloff. */
+.clouds {
+  position: absolute; inset: -10%;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  filter: saturate(115%);
+}
+.cloud {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: .5;
+  will-change: transform, opacity;
+}
+/* Each cloud is now a stack of multiple aurora-color radial gradients
+   so the misty layer itself carries the aurora rainbow — not just the
+   curtain ribbons. Cyan, pink, moss, blueberry intermingle within each
+   cloud at different positions, creating a multi-hue aurora-mist. */
+.cloud-1 {
+  width: 90vw; height: 80vh; top: -15%; left: -25%;
+  background:
+    radial-gradient(circle at 22% 38%, rgba(69,217,255,.55)  0%, rgba(69,217,255,.18)  38%, transparent 75%),
+    radial-gradient(circle at 62% 28%, rgba(244,207,217,.50) 0%, rgba(244,207,217,.16) 40%, transparent 78%),
+    radial-gradient(circle at 48% 72%, rgba(115,140,94,.45)  0%, rgba(115,140,94,.14)  42%, transparent 80%),
+    radial-gradient(circle at 78% 62%, rgba(74,95,193,.55)   0%, rgba(74,95,193,.18)   38%, transparent 78%);
+  animation: cloudDrift 60s ease-in-out infinite alternate, cloudPulse 14s ease-in-out infinite alternate;
+}
+.cloud-2 {
+  width: 85vw; height: 75vh; top: 0%; right: -20%;
+  background:
+    radial-gradient(circle at 30% 26%, rgba(244,207,217,.55) 0%, rgba(244,207,217,.18) 38%, transparent 76%),
+    radial-gradient(circle at 70% 50%, rgba(115,140,94,.48)  0%, rgba(115,140,94,.16)  40%, transparent 78%),
+    radial-gradient(circle at 50% 80%, rgba(69,217,255,.45)  0%, rgba(69,217,255,.14)  42%, transparent 80%),
+    radial-gradient(circle at 18% 70%, rgba(255,143,216,.42) 0%, rgba(255,143,216,.14) 40%, transparent 78%);
+  animation: cloudDrift 70s ease-in-out infinite alternate-reverse, cloudPulse 17s ease-in-out infinite alternate;
+}
+.cloud-3 {
+  width: 88vw; height: 72vh; bottom: -20%; left: 5%;
+  background:
+    radial-gradient(circle at 28% 60%, rgba(115,140,94,.52)  0%, rgba(115,140,94,.18)  40%, transparent 78%),
+    radial-gradient(circle at 72% 30%, rgba(74,95,193,.48)   0%, rgba(74,95,193,.16)   38%, transparent 76%),
+    radial-gradient(circle at 50% 82%, rgba(244,207,217,.42) 0%, rgba(244,207,217,.14) 42%, transparent 80%),
+    radial-gradient(circle at 86% 68%, rgba(111,78,163,.42)  0%, rgba(111,78,163,.14)  38%, transparent 78%);
+  animation: cloudDrift 80s ease-in-out infinite alternate, cloudPulse 19s ease-in-out infinite alternate;
+}
+.cloud-4 {
+  width: 78vw; height: 65vh; bottom: 0%; right: 0%;
+  background:
+    radial-gradient(circle at 35% 40%, rgba(111,78,163,.45)  0%, rgba(111,78,163,.16)  40%, transparent 78%),
+    radial-gradient(circle at 70% 65%, rgba(69,217,255,.42)  0%, rgba(69,217,255,.14)  42%, transparent 80%),
+    radial-gradient(circle at 28% 75%, rgba(244,207,217,.42) 0%, rgba(244,207,217,.14) 40%, transparent 78%),
+    radial-gradient(circle at 80% 28%, rgba(115,140,94,.40)  0%, rgba(115,140,94,.12)  42%, transparent 80%);
+  animation: cloudDrift 90s ease-in-out infinite alternate-reverse, cloudPulse 21s ease-in-out infinite alternate;
+}
+@keyframes cloudDrift {
+  /* Single direction primary drift — left-to-right slow — with
+     subtle vertical wobble. No reversed band-jitter. */
+  from { transform: translate3d(-3%, -2%, 0) scale(1); }
+  to   { transform: translate3d(4%, 2%, 0) scale(1.04); }
+}
+@keyframes cloudPulse {
+  0%, 100% { opacity: .42; }
+  50%      { opacity: .68; }
+}
+
+/* AURORA CURTAINS — true aurora ribbons. Each is a horizontal color
+   gradient (cyan→pink→moss→blueberry) masked vertically so it fades to
+   transparent at top and bottom, giving the "ribbon hanging in the sky"
+   look. The mask edges are soft (gradients), so no hard transitions. */
+.aurora-curtains {
+  position: absolute; inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+.curtain {
+  position: absolute;
+  left: -15%; width: 130%;
+  filter: blur(50px) saturate(125%);
+  will-change: transform;
+}
+.curtain-1 {
+  top: 8%; height: 52vh;
+  background: linear-gradient(95deg,
+    transparent 0%,
+    rgba(69,217,255,0)  6%,
+    rgba(69,217,255,.35) 18%,
+    rgba(244,207,217,.5) 34%,
+    rgba(115,140,94,.42) 50%,
+    rgba(74,95,193,.5)  66%,
+    rgba(255,143,216,.42) 80%,
+    rgba(255,143,216,0) 94%,
+    transparent 100%);
+  -webkit-mask: linear-gradient(180deg,
+    transparent 0%,
+    rgba(0,0,0,.4) 18%,
+    black 38%, black 60%,
+    rgba(0,0,0,.4) 82%,
+    transparent 100%);
+  mask: linear-gradient(180deg,
+    transparent 0%,
+    rgba(0,0,0,.4) 18%,
+    black 38%, black 60%,
+    rgba(0,0,0,.4) 82%,
+    transparent 100%);
+  opacity: .72;
+  animation: curtainDrift 55s ease-in-out infinite alternate, curtainSway 24s ease-in-out infinite alternate;
+}
+.curtain-2 {
+  top: 28%; height: 48vh;
+  background: linear-gradient(95deg,
+    transparent 0%,
+    rgba(244,207,217,0)  8%,
+    rgba(244,207,217,.45) 22%,
+    rgba(74,95,193,.5)   38%,
+    rgba(115,140,94,.4)  54%,
+    rgba(69,217,255,.45) 70%,
+    rgba(255,180,105,.32) 84%,
+    transparent 100%);
+  -webkit-mask: linear-gradient(180deg,
+    transparent 0%,
+    rgba(0,0,0,.35) 16%,
+    black 36%, black 64%,
+    rgba(0,0,0,.35) 84%,
+    transparent 100%);
+  mask: linear-gradient(180deg,
+    transparent 0%,
+    rgba(0,0,0,.35) 16%,
+    black 36%, black 64%,
+    rgba(0,0,0,.35) 84%,
+    transparent 100%);
+  opacity: .68;
+  animation: curtainDrift 65s ease-in-out infinite alternate, curtainSway 28s ease-in-out infinite alternate;
+}
+.curtain-3 {
+  top: 50%; height: 45vh;
+  background: linear-gradient(95deg,
+    transparent 0%,
+    rgba(74,95,193,0)   8%,
+    rgba(74,95,193,.4)  22%,
+    rgba(255,143,216,.45) 38%,
+    rgba(244,207,217,.42) 56%,
+    rgba(115,140,94,.38) 72%,
+    rgba(74,141,122,.32) 86%,
+    transparent 100%);
+  -webkit-mask: linear-gradient(180deg,
+    transparent 0%,
+    rgba(0,0,0,.3) 14%,
+    black 34%, black 62%,
+    rgba(0,0,0,.3) 84%,
+    transparent 100%);
+  mask: linear-gradient(180deg,
+    transparent 0%,
+    rgba(0,0,0,.3) 14%,
+    black 34%, black 62%,
+    rgba(0,0,0,.3) 84%,
+    transparent 100%);
+  opacity: .6;
+  animation: curtainDrift 75s ease-in-out infinite alternate-reverse, curtainSway 32s ease-in-out infinite alternate;
+}
+@keyframes curtainDrift {
+  /* Slow, primary direction left → right. Gentle. */
+  from { transform: translate3d(-6%, 0, 0); }
+  to   { transform: translate3d(6%, 0, 0); }
+}
+@keyframes curtainSway {
+  /* Subtle vertical wobble to give "draping in the sky" feel.
+     Independent timing from the drift so the pattern never repeats cleanly. */
+  from { transform: translateY(-1.5%) skewY(-1deg); }
+  to   { transform: translateY(1.5%)  skewY(1deg); }
+}
+
+/* AURORA BANDS — secondary cloud-mist glow IN FRONT of the curtains.
+   These are softer than the curtains and add depth + richness without
+   any hard edges. */
+.aurora-bands {
+  position: absolute; inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  filter: saturate(115%);
+}
+.band {
+  position: absolute;
+  width: 160%; height: 70vh; left: -30%;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: .55;
+  will-change: transform, opacity;
+}
+.band-1 {
+  top: 18%;
+  background: radial-gradient(ellipse 50% 40% at 30% 50%,
+    var(--gc-cyan) 0%,
+    rgba(69,217,255,.3) 30%,
+    rgba(69,217,255,.1) 55%,
+    transparent 80%);
+  animation: bandDrift 70s ease-in-out infinite alternate, bandFade 18s ease-in-out infinite alternate;
+}
+.band-2 {
+  top: 38%;
+  background: radial-gradient(ellipse 55% 42% at 65% 50%,
+    var(--ag-light-pink) 0%,
+    rgba(244,207,217,.32) 32%,
+    rgba(244,207,217,.1) 58%,
+    transparent 82%);
+  animation: bandDrift 80s ease-in-out infinite alternate, bandFade 22s ease-in-out infinite alternate;
+}
+.band-3 {
+  top: 58%;
+  background: radial-gradient(ellipse 50% 40% at 45% 50%,
+    var(--ag-moss) 0%,
+    rgba(115,140,94,.28) 32%,
+    rgba(115,140,94,.08) 60%,
+    transparent 84%);
+  animation: bandDrift 90s ease-in-out infinite alternate-reverse, bandFade 26s ease-in-out infinite alternate;
+}
+@keyframes bandDrift {
+  /* Same primary direction as curtains for visual coherence. */
+  from { transform: translate3d(-4%, -2%, 0); }
+  to   { transform: translate3d(6%, 3%, 0); }
+}
+@keyframes bandFade {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: .75; }
+}
+
+/* AURORA RAYS — the layer that explicitly LOOKS like aurora.
+   Each ray is a tall narrow vertical ribbon with a top-to-bottom color
+   stratification that mimics real aurora physics: cyan/green near the
+   base where ionization is densest, transitioning to pink/red at altitude
+   where the atmosphere is thinner. Each ray sways horizontally on its own
+   timing while pulsing in opacity — that's the "dancing" of the aurora. */
+.aurora-real {
+  position: absolute; inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  overflow: hidden;
+}
+/* Rays now sit in the UPPER portion of the viewport — height 65vh starting
+   above the top edge, so the dense color zone lands in the top third of
+   the screen, not draping over the wordmark and button below.
+   Coverage spans -8% to 96% horizontal so both edges of the screen are
+   filled. 10 rays, evenly distributed, with slight position jitter so
+   they don't read as a regular grid. */
+.ray {
+  position: absolute;
+  top: -10%;
+  width: 26vw;
+  height: 65vh;
+  filter: blur(28px) saturate(160%);
+  transform-origin: top center;
+  will-change: transform, opacity;
+  border-radius: 50%;
+}
+.ray-1 {
+  left: -10%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(115,140,94,.5) 6%,
+    rgba(69,217,255,.95) 18%,
+    rgba(115,140,94,.95) 32%,
+    rgba(244,207,217,.8) 48%,
+    rgba(255,143,216,.5) 65%,
+    rgba(255,143,216,.18) 82%,
+    transparent 100%);
+  animation: rayDance1 11s ease-in-out infinite alternate, rayPulse 2.6s ease-in-out infinite alternate;
+}
+.ray-2 {
+  left: 2%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(69,217,255,.65) 4%,
+    rgba(115,140,94,.95) 18%,
+    rgba(244,207,217,.95) 36%,
+    rgba(74,95,193,.7) 54%,
+    rgba(255,143,216,.45) 74%,
+    transparent 100%);
+  animation: rayDance2 13s ease-in-out infinite alternate, rayPulse 3.2s ease-in-out infinite alternate;
+}
+.ray-3 {
+  left: 14%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(115,140,94,.55) 6%,
+    rgba(74,141,122,.95) 18%,
+    rgba(69,217,255,.95) 32%,
+    rgba(244,207,217,.8) 50%,
+    rgba(111,78,163,.55) 72%,
+    transparent 100%);
+  animation: rayDance3 9s ease-in-out infinite alternate, rayPulse 2.2s ease-in-out infinite alternate;
+}
+.ray-4 {
+  left: 26%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(244,207,217,.6) 6%,
+    rgba(115,140,94,.95) 20%,
+    rgba(69,217,255,.9) 38%,
+    rgba(74,95,193,.7) 56%,
+    rgba(255,143,216,.5) 76%,
+    transparent 100%);
+  animation: rayDance1 14s ease-in-out infinite alternate-reverse, rayPulse 3.8s ease-in-out infinite alternate;
+}
+.ray-5 {
+  left: 38%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(115,140,94,.55) 4%,
+    rgba(69,217,255,.95) 18%,
+    rgba(115,140,94,.95) 34%,
+    rgba(244,207,217,.8) 52%,
+    rgba(255,143,216,.45) 72%,
+    transparent 100%);
+  animation: rayDance2 10s ease-in-out infinite alternate-reverse, rayPulse 2.9s ease-in-out infinite alternate;
+}
+.ray-6 {
+  left: 50%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(74,141,122,.55) 6%,
+    rgba(115,140,94,.95) 20%,
+    rgba(69,217,255,.9) 36%,
+    rgba(244,207,217,.75) 54%,
+    rgba(74,95,193,.55) 76%,
+    transparent 100%);
+  animation: rayDance3 12s ease-in-out infinite alternate, rayPulse 3.4s ease-in-out infinite alternate;
+}
+.ray-7 {
+  left: 62%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(69,217,255,.6) 4%,
+    rgba(115,140,94,.95) 18%,
+    rgba(244,207,217,.85) 36%,
+    rgba(255,143,216,.55) 56%,
+    rgba(74,95,193,.4) 78%,
+    transparent 100%);
+  animation: rayDance1 10s ease-in-out infinite alternate, rayPulse 3.0s ease-in-out infinite alternate;
+}
+.ray-8 {
+  left: 74%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(115,140,94,.55) 6%,
+    rgba(69,217,255,.95) 20%,
+    rgba(74,141,122,.85) 38%,
+    rgba(244,207,217,.7) 58%,
+    rgba(255,143,216,.45) 78%,
+    transparent 100%);
+  animation: rayDance2 12s ease-in-out infinite alternate-reverse, rayPulse 2.5s ease-in-out infinite alternate;
+}
+.ray-9 {
+  left: 86%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(244,207,217,.55) 4%,
+    rgba(115,140,94,.95) 18%,
+    rgba(69,217,255,.9) 36%,
+    rgba(111,78,163,.6) 56%,
+    rgba(255,143,216,.4) 76%,
+    transparent 100%);
+  animation: rayDance3 11s ease-in-out infinite alternate, rayPulse 3.6s ease-in-out infinite alternate;
+}
+.ray-10 {
+  left: 96%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(74,141,122,.55) 6%,
+    rgba(69,217,255,.95) 20%,
+    rgba(115,140,94,.9) 36%,
+    rgba(244,207,217,.75) 54%,
+    rgba(255,143,216,.5) 74%,
+    transparent 100%);
+  animation: rayDance1 13s ease-in-out infinite alternate-reverse, rayPulse 2.8s ease-in-out infinite alternate;
+}
+/* The "dance" — each ray sways horizontally with a skew, simulating the
+   wind-buffeted curtain of a real aurora. Three different keyframes give
+   variety; rays pick from them at different durations and directions so
+   the overall pattern never repeats cleanly. */
+@keyframes rayDance1 {
+  0%   { transform: translateX(-12%) skewX(-8deg) scaleY(1); }
+  50%  { transform: translateX(0%)   skewX(2deg)  scaleY(1.04); }
+  100% { transform: translateX(10%)  skewX(7deg)  scaleY(.98); }
+}
+@keyframes rayDance2 {
+  0%   { transform: translateX(8%)   skewX(6deg)  scaleY(1); }
+  50%  { transform: translateX(-4%)  skewX(-3deg) scaleY(1.06); }
+  100% { transform: translateX(-12%) skewX(-9deg) scaleY(.96); }
+}
+@keyframes rayDance3 {
+  0%   { transform: translateX(-6%)  skewX(-4deg) scaleY(1); }
+  50%  { transform: translateX(6%)   skewX(5deg)  scaleY(1.05); }
+  100% { transform: translateX(-8%)  skewX(-6deg) scaleY(1); }
+}
+/* The "shimmer" — opacity pulses fast enough to read as light flicker,
+   slow enough to not read as a strobe. Each ray pulses on its own clock. */
+@keyframes rayPulse {
+  0%   { opacity: .42; }
+  50%  { opacity: .92; }
+  100% { opacity: .55; }
+}
+
+/* FOREST HORIZON — uses the supplied treeline.png (1536×400 RGBA).
+   Lifted off the bottom edge so a thin dark band reads as horizon line
+   rather than floor pattern. A mist wash sits behind the image to add
+   atmospheric softness without obscuring the artwork. */
+.forest {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  height: 28vh;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+}
+.forest-mist {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(246,247,251,.05) 18%,
+    rgba(246,247,251,.10) 38%,
+    rgba(115,140,94,.16) 58%,
+    rgba(44,94,63,.28) 80%,
+    rgba(44,94,63,.42) 100%);
+  filter: blur(7px);
+}
+/* Treeline gets a soft blur so its edges meld with the misty aurora
+   layers and cloud glow above it — no hard photographic cutout look.
+   90% opacity lets the background tint bleed through slightly so the
+   silhouette feels integrated with the sky behind, not pasted on top. */
+.forest-image {
+  position: absolute;
+  inset: 0;
+  background-image: url("assets/treeline.png");
+  background-repeat: repeat-x;
+  background-position: center bottom;
+  background-size: auto 100%;
+  filter: blur(1px);
+  opacity: .8;
+  pointer-events: none;
+}
+
+/* CONTENT — wordmark + tagline + ENTER button */
+.content {
+  position: relative; z-index: 6;
+  display: grid; place-items: center; gap: 22px;
+  text-align: center; padding: 0 24px;
+  margin-top: 14vh;
+  pointer-events: auto;
+}
+.overline {
+  margin: 0;
+  font-size: clamp(.78rem, 1.1vw, .92rem);
+  letter-spacing: .42em; text-transform: uppercase;
+  font-weight: 700;
+  color: #ffffff;
+  /* Animated drop-shadow cycling through baby pink → blueberry → moss →
+     off-white → back. Each phase has a tight inner glow + a wider outer
+     glow so the color reads as ambient light around the text, not just
+     a flat shadow. */
+  text-shadow: 0 0 8px var(--ag-light-pink), 0 0 22px var(--ag-light-pink);
+  animation: overlineGlow 14s ease-in-out infinite;
+}
+@keyframes overlineGlow {
+  0%   { text-shadow: 0 0 8px var(--ag-light-pink), 0 0 22px var(--ag-light-pink); }
+  25%  { text-shadow: 0 0 8px #9badf0,              0 0 24px #9badf0; }
+  50%  { text-shadow: 0 0 8px #b9d3a4,              0 0 22px #b9d3a4; }
+  75%  { text-shadow: 0 0 9px var(--gc-off-white),  0 0 28px var(--gc-off-white); }
+  100% { text-shadow: 0 0 8px var(--ag-light-pink), 0 0 22px var(--ag-light-pink); }
+}
+.wordmark {
+  margin: 0; padding: 0;
+  font-weight: 900;
+  letter-spacing: -.025em;
+  line-height: .82;
+  font-size: clamp(3.4rem, 14vw, 11rem);
+  display: grid; gap: .04em;
+}
+.line-1 {
+  background: linear-gradient(180deg, #ffffff 0%, var(--ag-light-pink) 60%, var(--gc-pink) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 32px rgba(244,207,217,.4));
+  animation: shimmer1 6s ease-in-out infinite alternate;
+}
+.line-2 {
+  background: linear-gradient(180deg, var(--ag-light-pink) 0%, var(--ag-blueberry) 60%, var(--gc-grape) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 36px rgba(74,95,193,.45));
+  animation: shimmer2 7.5s ease-in-out infinite alternate;
+}
+@keyframes shimmer1 {
+  from { filter: drop-shadow(0 0 24px rgba(244,207,217,.32)); }
+  to   { filter: drop-shadow(0 0 56px rgba(244,207,217,.62)); }
+}
+@keyframes shimmer2 {
+  from { filter: drop-shadow(0 0 24px rgba(74,95,193,.32)); }
+  to   { filter: drop-shadow(0 0 60px rgba(74,95,193,.65)); }
+}
+.tagline {
+  margin: 6px 0 18px;
+  font-size: clamp(.92rem, 1.5vw, 1.1rem);
+  letter-spacing: .32em; text-transform: uppercase;
+  color: rgba(246,247,251,.7);
+  font-weight: 600;
+}
+
+/* ENTER — single bold CTA. Aurora-rainbow gradient flowing rightward.
+   The gradient contains the SAME color sequence twice (0-50% and 50-100%)
+   so when background-size is 200%, the visible window at position 0%
+   and at position 100% show identical content — the loop is seamless.
+   background-size: 200% is also what makes percentage-based
+   background-position actually MOVE the gradient (with default auto
+   sizing, percentages are no-ops because image_size = element_size). */
+/* @property registers --enter-angle as an animatable <angle> so the
+   gradient direction can lean and tween smoothly. Without this, custom
+   properties are treated as strings and animations would hard-cut. */
+@property --enter-angle {
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 95deg;
+}
+
+.enter {
+  position: relative;
+  display: inline-flex; gap: 14px; align-items: center;
+  padding: 18px 40px;
+  text-decoration: none;
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  font-weight: 800;
+  letter-spacing: .2em; text-transform: uppercase;
+  color: #08101b;
+  background: transparent;  /* gradient now lives on ::before so only the
+                               gradient gets distorted by the wave filter,
+                               keeping the button shape + text undistorted */
+  border-radius: 999px;
+  box-shadow:
+    0 16px 48px rgba(74,95,193,.45),
+    0 0 0 1px rgba(255,255,255,.18) inset,
+    0 0 60px rgba(244,207,217,.35);
+  transition: transform .25s ease, box-shadow .25s ease;
+  isolation: isolate;  /* contains negative z-index of ::before/::after */
+  /* enterLean animates --enter-angle on .enter; both pseudos inherit
+     the value via var() and re-render as it changes. Keyframes are at
+     non-uniform intervals so the back-and-forth feels random. */
+  animation: enterLean 30s ease-in-out infinite;
+}
+/* Foreground gradient — wavy bands. Filter url(#enterWave) applies the
+   animated turbulence displacement so each color band undulates slightly
+   as it scrolls. */
+.enter::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(var(--enter-angle),
+    var(--gc-cyan)        0%,
+    var(--gc-mint)        12.5%,
+    var(--ag-light-pink)  25%,
+    var(--ag-blueberry)   37.5%,
+    var(--gc-cyan)        50%,
+    var(--gc-mint)        62.5%,
+    var(--ag-light-pink)  75%,
+    var(--ag-blueberry)   87.5%,
+    var(--gc-cyan)        100%);
+  background-size: 200% 100%;
+  animation: enterShimmer 9s linear infinite;
+  filter: url('#enterWave');
+  z-index: -1;
+}
+.enter::after {
+  content: ""; position: absolute; inset: -4px;
+  border-radius: 999px;
+  background: linear-gradient(var(--enter-angle),
+    var(--gc-cyan)       0%,
+    var(--gc-mint)       12.5%,
+    var(--ag-light-pink) 25%,
+    var(--ag-blueberry)  37.5%,
+    var(--gc-cyan)       50%,
+    var(--gc-mint)       62.5%,
+    var(--ag-light-pink) 75%,
+    var(--ag-blueberry)  87.5%,
+    var(--gc-cyan)       100%);
+  background-size: 200% 100%;
+  z-index: -2;  /* further back than ::before's -1 — glow is the deepest layer */
+  filter: blur(20px); opacity: .55;
+  animation: enterShimmer 11s linear infinite, enterGlow 6s ease-in-out infinite alternate;
+}
+/* Animation 100% → 0% scrolls the gradient pattern rightward (visual
+   flow LEFT → RIGHT). Because the gradient is doubled, both endpoints
+   show identical content — the loop has no perceptible seam. */
+@keyframes enterShimmer {
+  from { background-position: 100% 50%; }
+  to   { background-position: 0%   50%; }
+}
+/* Random-feeling back-and-forth lean. Keyframes are at irregular times
+   (16%, 27%, 41%, 58%, 73%, 89%) and visit angles on both sides of the
+   90° baseline (some <90, some >90), so the gradient tips one way, then
+   the other, never on a clean tempo. ease-in-out timing rounds each
+   transition. Loop ends at the same value as start for seamless cycle. */
+@keyframes enterLean {
+  0%   { --enter-angle: 84deg; }
+  16%  { --enter-angle: 104deg; }
+  27%  { --enter-angle: 90deg; }
+  41%  { --enter-angle: 108deg; }
+  58%  { --enter-angle: 82deg; }
+  73%  { --enter-angle: 98deg; }
+  89%  { --enter-angle: 88deg; }
+  100% { --enter-angle: 84deg; }
+}
+@keyframes enterGlow {
+  from { opacity: .42; transform: scale(1); }
+  to   { opacity: .7;  transform: scale(1.08); }
+}
+.enter:hover { transform: translateY(-2px) scale(1.03); }
+.enter:active { transform: translateY(0) scale(.99); }
+.enter-arrow { transition: transform .25s ease; }
+.enter:hover .enter-arrow { transform: translateX(6px); }
+
+/* LINEAGE — small attribution at the bottom */
+/* Lineage link — clickable on hover, each word lights up in its own
+   color from the GC palette and "Great Creations" picks up a baby-pink
+   underline. Resting state stays muted so the link doesn't fight the
+   wordmark for attention. */
+.lineage {
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  margin: 0;
+  font-size: .72rem; letter-spacing: .35em; text-transform: uppercase;
+  color: rgba(246,247,251,.45);
+  z-index: 6;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lineage .word-a,
+.lineage .word-great,
+.lineage .word-creations,
+.lineage .word-brand,
+.lineage .phrase-gc {
+  transition: color .25s ease, text-decoration-color .25s ease;
+}
+.lineage:hover .word-a       { color: var(--gc-copper); }
+.lineage:hover .word-great   { color: var(--gc-orange); }
+.lineage:hover .word-creations { color: var(--gc-cyan); }
+.lineage:hover .word-brand   { color: var(--ag-light-pink); }
+.lineage:hover .phrase-gc {
+  text-decoration: underline;
+  text-decoration-color: var(--ag-light-pink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+/* RESPONSIVE — keep everything bold and big on mobile too */
+@media (max-width: 720px) {
+  .moon-wrap {
+    top: 12%;
+    width: clamp(220px, 60vw, 320px);
+    height: clamp(220px, 60vw, 320px);
+  }
+  .content { margin-top: 10vh; gap: 18px; padding: 0 16px; }
+  .enter { padding: 14px 30px; }
+  .lineage { bottom: 18px; font-size: .65rem; }
+}
+
+/* REDUCED MOTION — respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  .stars, .moon-halo, .moon-shimmer,
+  .cloud, .curtain, .band, .ray,
+  .line-1, .line-2, .enter, .enter::after {
+    animation: none !important;
+  }
+  .cloud  { opacity: .55; }
+  .curtain { opacity: .65; }
+  .band   { opacity: .55; }
+  .ray    { opacity: .65; }
+}

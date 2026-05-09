@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account — Aurora Gracewood</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png" />
+  <link rel="stylesheet" href="auth.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(244,207,217,.08), transparent 32%),
+        radial-gradient(circle at 80% 10%, rgba(74,95,193,.10), transparent 28%),
+        linear-gradient(180deg, #02030a, #050816 50%, #01020a);
+      color: #f6f7fb;
+      display: grid; place-items: center; padding: 32px;
+    }
+    .panel {
+      max-width: 540px; padding: 36px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 22px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.4);
+      text-align: center;
+    }
+    .panel h1 { margin: 0 0 10px; letter-spacing: -.03em; }
+    .panel p { color: rgba(246,247,251,.72); line-height: 1.6; margin: 0 0 18px; }
+    .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+    .signed-in { display: none; }
+    .signed-out { display: block; }
+    body.is-authed .signed-in { display: block; }
+    body.is-authed .signed-out { display: none; }
+    .btn {
+      padding: 11px 20px; border-radius: 999px; border: 0;
+      font: inherit; font-weight: 700; cursor: pointer;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #4a5fc1, #f4cfd9);
+      color: #08101b;
+    }
+    .btn-link {
+      background: transparent; color: #f6f7fb; border: 1px solid rgba(255,255,255,.18);
+    }
+    .btn-link:hover { background: rgba(255,255,255,.07); }
+    .home { margin-top: 28px; font-size: .86rem; }
+    .home a { color: #f4cfd9; text-decoration: none; }
+    .home a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>Aurora Gracewood Account</h1>
+    <div class="signed-out">
+      <p><strong>Free.</strong> One account works across everything I make. Sign in to continue, or create a new free account in a moment.</p>
+      <div class="row">
+        <button class="btn btn-primary" type="button" data-mode="signin">Sign In</button>
+        <button class="btn btn-link" type="button" data-mode="signup">Sign Up Free</button>
+      </div>
+    </div>
+    <div class="signed-in">
+      <p>You're signed in as <strong id="who"></strong>.</p>
+      <p>Your Aurora Gracewood account works on every site I make — Aurora Awards is one of them. Head back to wherever you were.</p>
+      <div class="row">
+        <a class="btn btn-primary" href="/awards/">Open Aurora Awards</a>
+        <button class="btn btn-link" id="signout" type="button">Sign Out</button>
+      </div>
+    </div>
+    <p class="home"><a href="/">← Back to Aurora Gracewood</a></p>
+  </div>
+
+  <script src="auth.js"></script>
+  <script>
+    function refresh() {
+      const u = AGAuth.getUser();
+      document.body.classList.toggle('is-authed', !!u);
+      if (u) document.querySelector('#who').textContent = u.name || u.email;
+    }
+    document.querySelectorAll('button[data-mode]').forEach((b) => {
+      b.addEventListener('click', () => AGAuth.showModal({ mode: b.dataset.mode, onSuccess: refresh }));
+    });
+    document.querySelector('#signout').addEventListener('click', () => { AGAuth.signOut(); refresh(); });
+    document.addEventListener('agauth:change', refresh);
+    refresh();
+  </script>
+</body>
+</html>

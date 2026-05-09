@@ -1,0 +1,160 @@
+/* ============================================================
+   Aurora Gracewood — shared auth chrome (chip + modal) styles
+   Uses the GC color system. Colors here are PLACEHOLDERS until
+   user finalizes hexes — see great-creations-color-system.md.
+   ============================================================ */
+
+:root {
+  --ag-light-pink: #f4cfd9;
+  --ag-blueberry: #4a5fc1;
+  --ag-moss: #738c5e;
+  --gc-cyan: #45d9ff;
+  --gc-pink: #ff8fd8;
+  --gc-orange: #ffb469;
+  --gc-grape: #6f4ea3;
+  --gc-forest: #2c5e3f;
+  --gc-midnight: #050816;
+  --gc-charcoal: #1c1f2a;
+  --gc-off-white: #f6f7fb;
+  --gc-copper: #c47a4a;
+  --gc-mint: #4a8d7a;
+  --gc-line: rgba(255,255,255,.12);
+}
+
+/* AUTH CHIP — passport bar, identical across every AG product */
+.ag-chip { display: inline-flex; gap: 10px; align-items: center; position: relative; }
+.ag-chip-out .ag-link {
+  background: transparent; border: 0; color: var(--gc-off-white);
+  cursor: pointer; padding: 8px 14px; font: inherit; font-weight: 700;
+  border-radius: 999px;
+}
+.ag-chip-out .ag-link:hover { background: rgba(255,255,255,.07); }
+.ag-chip-out .ag-cta {
+  background: linear-gradient(135deg, var(--ag-blueberry), var(--ag-light-pink));
+  color: #08101b; border: 0; cursor: pointer; padding: 9px 18px;
+  font: inherit; font-weight: 800; border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(74, 95, 193, 0.28);
+}
+.ag-chip-out .ag-cta:hover { filter: brightness(1.08); }
+
+.ag-chip-btn {
+  display: inline-flex; gap: 8px; align-items: center;
+  background: rgba(255,255,255,.06); border: 1px solid var(--gc-line);
+  color: var(--gc-off-white); border-radius: 999px;
+  padding: 6px 14px 6px 6px; cursor: pointer; font: inherit; font-weight: 700;
+}
+.ag-chip-btn:hover { background: rgba(255,255,255,.1); }
+.ag-chip-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--ag-light-pink), var(--ag-blueberry), var(--ag-moss));
+  display: grid; place-items: center; color: #08101b; font-weight: 900; font-size: .82rem;
+}
+.ag-chip-name { font-weight: 700; }
+.ag-chip-caret { color: var(--gc-off-white); opacity: .7; font-size: .7rem; }
+
+.ag-chip-menu {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  min-width: 200px; background: var(--gc-charcoal);
+  border: 1px solid var(--gc-line); border-radius: 14px;
+  padding: 6px; display: none; z-index: 10001;
+  box-shadow: 0 24px 60px rgba(0,0,0,.45);
+}
+.ag-chip[data-open="true"] .ag-chip-menu { display: block; }
+.ag-chip-menu a {
+  display: block; padding: 10px 12px; border-radius: 10px;
+  color: var(--gc-off-white); text-decoration: none; font-weight: 600;
+}
+.ag-chip-menu a:hover { background: rgba(255,255,255,.07); color: var(--ag-light-pink); }
+
+/* MODAL — opens over current page, never redirects, never reloads.
+   Backdrop blur + fade. Page state under it is fully preserved. */
+.ag-modal-root {
+  position: fixed; inset: 0; z-index: 10000;
+  display: grid; place-items: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .22s ease;
+}
+.ag-modal-root[aria-hidden="false"] { opacity: 1; pointer-events: auto; }
+
+.ag-modal-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(2, 3, 12, .72);
+  backdrop-filter: blur(8px) saturate(110%);
+  -webkit-backdrop-filter: blur(8px) saturate(110%);
+}
+.ag-modal {
+  position: relative; z-index: 1;
+  width: min(440px, calc(100vw - 32px));
+  background: linear-gradient(180deg, rgba(28, 31, 42, .96), rgba(20, 22, 32, .96));
+  border: 1px solid var(--gc-line);
+  border-radius: 22px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.55);
+  padding: 28px;
+  color: var(--gc-off-white);
+  transform: translateY(8px);
+  transition: transform .22s ease;
+}
+.ag-modal-root[aria-hidden="false"] .ag-modal { transform: translateY(0); }
+
+.ag-modal-close {
+  position: absolute; top: 12px; right: 12px;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(255,255,255,.06); color: var(--gc-off-white);
+  border: 1px solid var(--gc-line); cursor: pointer;
+  font-size: 1.4rem; line-height: 1; display: grid; place-items: center;
+}
+.ag-modal-close:hover { background: rgba(255,255,255,.12); }
+
+.ag-modal-tabs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  background: rgba(0,0,0,.25);
+  border-radius: 999px; padding: 4px;
+  margin-bottom: 22px;
+}
+.ag-modal-tab {
+  background: transparent; border: 0; padding: 9px 12px;
+  border-radius: 999px; color: var(--gc-off-white); cursor: pointer;
+  font: inherit; font-weight: 700; opacity: .65;
+}
+.ag-modal-tab.is-active {
+  background: linear-gradient(135deg, var(--ag-blueberry), var(--ag-light-pink));
+  color: #08101b; opacity: 1;
+}
+
+.ag-modal-title { margin: 0 0 6px; font-size: 1.4rem; line-height: 1.2; letter-spacing: -.02em; }
+.ag-modal-sub { margin: 0 0 18px; color: rgba(246,247,251,.72); font-size: .94rem; }
+
+.ag-field { display: grid; gap: 6px; margin-bottom: 12px; }
+.ag-field > span { font-weight: 700; font-size: .88rem; color: rgba(246,247,251,.84); }
+.ag-field input {
+  background: rgba(0,0,0,.35); color: var(--gc-off-white);
+  border: 1px solid var(--gc-line); border-radius: 12px;
+  padding: 12px 14px; font: inherit;
+}
+.ag-field input:focus { outline: 2px solid var(--ag-blueberry); outline-offset: 1px; }
+
+.ag-checkline {
+  display: flex; gap: 10px; align-items: flex-start;
+  font-size: .82rem; color: rgba(246,247,251,.72);
+  margin: 4px 0 16px; line-height: 1.4;
+}
+.ag-checkline input { margin-top: 3px; flex-shrink: 0; }
+
+.ag-submit {
+  width: 100%; padding: 13px;
+  background: linear-gradient(135deg, var(--ag-blueberry), var(--ag-light-pink));
+  color: #08101b; border: 0; border-radius: 14px;
+  font: inherit; font-weight: 800; font-size: 1.02rem;
+  cursor: pointer;
+  box-shadow: 0 12px 32px rgba(74, 95, 193, .32);
+}
+.ag-submit:hover { filter: brightness(1.07); }
+
+.ag-modal-error {
+  margin: 10px 0 0; min-height: 1.2em;
+  color: var(--gc-pink); font-weight: 700; font-size: .88rem;
+}
+.ag-modal-disclosure {
+  margin: 14px 0 0; font-size: .76rem;
+  color: rgba(246,247,251,.55); line-height: 1.5;
+}

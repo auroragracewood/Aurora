@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Starter: Journey Begins — Snippet Sandbox</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1c1f2a; --muted: #7d8a99; --border: #cccfd6;
+    --code-bg: #f6f7fb; --accent: #4a5fc1; --pink: #f4cfd9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px;
+    font-family: 'FF Meta','Meta Pro','Meta','Inter',system-ui,sans-serif;
+    background: var(--bg); color: var(--fg); line-height: 1.5;
+  }
+  h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -.01em; }
+  .lede { color: var(--muted); margin: 0 0 32px; max-width: 60ch; }
+  h2 {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 40px 0 14px; font-weight: 700;
+    border-top: 1px solid var(--border); padding-top: 24px;
+  }
+  h3 { font-size: 13px; margin: 12px 0 6px; font-weight: 700; }
+  .small { font-size: 12px; color: var(--muted); }
+  .note {
+    background: rgba(244,207,217,.18); border-left: 3px solid var(--pink);
+    padding: 12px 16px; margin: 12px 0; font-size: 13px;
+  }
+  .note.locked { background: rgba(74,95,193,.08); border-left-color: var(--accent); }
+  .note.rules  { background: #fff8e6; border-left-color: #c47a4a; }
+  .ff-grid { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .ff-card {
+    border: 1px solid var(--border); padding: 16px; background: var(--bg);
+    display: flex; flex-direction: column; gap: 8px;
+    position: relative; width: 540px;
+  }
+  .ff-num {
+    position: absolute; top: -10px; left: -10px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1; box-shadow: 0 2px 6px rgba(0,0,0,.18); z-index: 2;
+  }
+  .ff-meta { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); }
+  .ff-preview {
+    background: repeating-conic-gradient(#f5f5f5 0% 25%, #ffffff 0% 50%) 0 0/20px 20px;
+    padding: 12px;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 80px;
+  }
+  .ff-preview svg { display: block; }
+  details.ff-snippets {
+    margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 8px;
+  }
+  details.ff-snippets summary {
+    cursor: pointer; font-size: 12px; font-weight: 700;
+    color: var(--accent); padding: 2px 0; list-style: none;
+  }
+  details.ff-snippets summary::before { content: "▸ "; }
+  details.ff-snippets[open] summary::before { content: "▾ "; }
+  .snippet-block { margin: 10px 0 4px; }
+  .snippet-block h3 {
+    font-size: 11px; margin: 8px 0 4px; font-weight: 700;
+    color: var(--accent); letter-spacing: 0.04em;
+  }
+  pre.snippet {
+    background: var(--code-bg); padding: 10px; margin: 4px 0 0;
+    font-family: ui-monospace, monospace; font-size: 10.5px;
+    line-height: 1.55; overflow-x: auto; border: 1px solid var(--border);
+  }
+  pre.snippet code { white-space: pre-wrap; word-break: break-word; }
+
+  .badge-svg text { font-family: 'FF Meta','Meta Pro','Meta','Inter',system-ui,sans-serif; }
+  /* Off-white halo on awardee + title (charcoal/blueberry text on dark backgrounds). */
+  .badge-svg text:not([fill="#c47a4a"]):not([fill="#f6f7fb"]) { filter: url(#text-shadow); }
+  /* Dark drop shadow on year stamps + main image mark, for depth/lift over the artwork. */
+  .badge-svg text[fill="#c47a4a"] { filter: url(#dark-shadow); }
+  .badge-svg g[mask] { filter: url(#dark-shadow); }
+  /* Inverted: off-white subtitle + category + awardee text get a charcoal halo. */
+  .badge-svg text[fill="#f6f7fb"] { filter: url(#text-shadow-dark); }
+  /* Stronger off-white halo specifically on the blueberry title. */
+  .badge-svg text[fill="#4a5fc1"] { filter: url(#title-shadow); }
+</style>
+</head>
+<body>
+
+<!-- Dynamic-recipient control panel — proves all 9 form factors render per-user data, not hardcoded.
+     Default test name "Audora Graywood" is intentionally close-but-different from "Aurora Gracewood"
+     so a coincidental match doesn't fool the eye. -->
+<div class="recipient-panel">
+  <strong>Test recipient</strong>
+  <label>Awardee name <input id="inp-display" type="text" value="Audora Graywood" autocomplete="off" /></label>
+  <label>Slug <input id="inp-slug" type="text" value="audora-graywood" autocomplete="off" /></label>
+  <label>Year <input id="inp-year" type="text" value="2026" maxlength="4" inputmode="numeric" autocomplete="off" /></label>
+  <span class="recipient-hint">Type to retarget all 9 form factors live. This is what a hypothetical user named "Audora Graywood" would see.</span>
+</div>
+<style>
+  .recipient-panel {
+    display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+    padding: 12px 16px; margin: 0 0 24px;
+    background: rgba(74,95,193,0.08); border: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .recipient-panel strong { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  .recipient-panel label { display: inline-flex; align-items: center; gap: 6px; }
+  .recipient-panel input { padding: 5px 8px; border: 1px solid var(--border); font: inherit; min-width: 100px; }
+  .recipient-panel input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .recipient-hint { color: var(--muted); font-size: 12px; flex-basis: 100%; margin-top: 2px; }
+  /* Each badge SVG is wrapped in an <a> at runtime so clicks route to /u/{slug} on me-think,
+     mirroring production behavior where badges click through to the recipient's profile. */
+  a.ag-badge-link {
+    display: inline-block; line-height: 0;
+    text-decoration: none; color: inherit;
+    transition: transform 0.18s ease, filter 0.18s ease;
+  }
+  a.ag-badge-link:hover { transform: scale(1.04); filter: drop-shadow(0 4px 10px rgba(0,0,0,0.2)); }
+  a.ag-badge-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+</style>
+
+<!-- Shared gradient definition reused by all 9 badges (cyan → pink → blueberry → moss, top to bottom) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="ag-border" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#45d9ff"/>
+      <stop offset="33%" stop-color="#ff8fd8"/>
+      <stop offset="66%" stop-color="#4a5fc1"/>
+      <stop offset="100%" stop-color="#738c5e"/>
+    </linearGradient>
+    <linearGradient id="copper-sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e09668"/>
+      <stop offset="50%" stop-color="#c47a4a"/>
+      <stop offset="100%" stop-color="#6f4326"/>
+    </linearGradient>
+    <filter id="text-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="#f6f7fb" flood-opacity="1"/>
+    </filter>
+    <filter id="dark-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="text-shadow-dark" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="#1c1f2a" flood-opacity="1"/>
+    </filter>
+    <filter id="title-shadow" x="-100%" y="-100%" width="300%" height="300%">
+      <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#f6f7fb" flood-opacity="1"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#f6f7fb" flood-opacity="1"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#f6f7fb" flood-opacity="1"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#f6f7fb" flood-opacity="1"/>
+    </filter>
+    <radialGradient id="gleam-rotate" cx="0.5" cy="0.5" r="0.65" gradientUnits="objectBoundingBox">
+      <stop offset="0"    stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.13"/>
+      <stop offset="0.7"  stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="1"    stop-color="#ffffff" stop-opacity="0"/>
+      <animate attributeName="cx" attributeType="XML"
+               values="0.8;0.71;0.5;0.29;0.2;0.29;0.5;0.71;0.8"
+               keyTimes="0;0.125;0.25;0.375;0.5;0.625;0.75;0.875;1"
+               dur="22s" repeatCount="indefinite"/>
+      <animate attributeName="cy" attributeType="XML"
+               values="0.5;0.64;0.7;0.64;0.5;0.36;0.3;0.36;0.5"
+               keyTimes="0;0.125;0.25;0.375;0.5;0.625;0.75;0.875;1"
+               dur="22s" repeatCount="indefinite"/>
+    </radialGradient>
+    <radialGradient id="gleam-rotate-2" cx="0.5" cy="0.5" r="0.65" gradientUnits="objectBoundingBox">
+      <stop offset="0"    stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.13"/>
+      <stop offset="0.7"  stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="1"    stop-color="#ffffff" stop-opacity="0"/>
+      <animate attributeName="cx" attributeType="XML"
+               values="0.2;0.29;0.5;0.71;0.8;0.71;0.5;0.29;0.2"
+               keyTimes="0;0.125;0.25;0.375;0.5;0.625;0.75;0.875;1"
+               dur="22s" repeatCount="indefinite"/>
+      <animate attributeName="cy" attributeType="XML"
+               values="0.5;0.64;0.7;0.64;0.5;0.36;0.3;0.36;0.5"
+               keyTimes="0;0.125;0.25;0.375;0.5;0.625;0.75;0.875;1"
+               dur="22s" repeatCount="indefinite"/>
+    </radialGradient>
+  </defs>
+</svg>
+
+<h1>Starter: Journey Begins <span style="font-size:14px;color:#7d8a99;font-weight:400">· Tier B · Influence · 2026</span></h1>
+<p class="lede">All 9 form factors with the latest layout rules applied: awardee first (top/left), mark + tight year split centered in form factor, title + subtitle last (bottom/right), gradient border cyan→pink→blueberry→moss top-to-bottom, title in blueberry, subtitle in charcoal italic.</p>
+
+<div class="note locked">
+  <strong>Locked layout rules (apply to all Tier B badges):</strong>
+  <ul style="margin:6px 0 0;padding-left:20px;font-size:12px">
+    <li>Awardee name FIRST — top of vertical, left of horizontal (dynamic per recipient)</li>
+    <li>Mark + year split CENTERED in form factor; year flanks the mark tightly</li>
+    <li>Title (STARTER) + Subtitle (Journey Begins) LAST — bottom of vertical, right of horizontal</li>
+    <li>Border: 3px (2px on small form factors) gradient cyan #45d9ff → pink #ff8fd8 → blueberry #4a5fc1 → moss #738c5e (top to bottom)</li>
+    <li>Title color: Aurora Blueberry #4a5fc1 / Subtitle color: Charcoal #1c1f2a italic</li>
+    <li>Year split: Copper #c47a4a, FF Meta Black</li>
+    <li>Background: Off-White #f6f7fb</li>
+  </ul>
+</div>
+
+<h2>Form factors · 9 starter previews</h2>
+
+<div class="ff-grid">
+
+  <!-- 1 — hero 200×200 (square) — eyebrow brought DOWN closer to mark -->
+  <div class="ff-card">
+    <span class="ff-num">1</span>
+    <div class="ff-meta">hero · 200×200</div>
+    <div class="ff-preview">
+      <svg class="badge-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+        <defs><mask id="m-hero" mask-type="alpha"><image href="../../assets/mark.svg" x="60" y="60" width="80" height="80"/></mask></defs>
+        <image href="starter.png" x="0" y="0" width="200" height="200" preserveAspectRatio="xMidYMid slice"/>
+        <rect x="6" y="6" width="188" height="188" fill="none" stroke="url(#ag-border)" stroke-width="3"/>
+        <text x="100" y="46" text-anchor="middle" font-size="7" font-weight="800" letter-spacing="1.5" fill="#f6f7fb">AURORA GRACEWOOD</text>
+        <text x="46" y="106" text-anchor="middle" font-size="20" font-weight="900" fill="#c47a4a" letter-spacing="-0.5">20</text>
+        <g mask="url(#m-hero)"><rect x="60" y="60" width="80" height="80" fill="url(#copper-sheen)"/></g>
+        <text x="154" y="106" text-anchor="middle" font-size="20" font-weight="900" fill="#c47a4a" letter-spacing="-0.5">26</text>
+        <text x="100" y="166" text-anchor="middle" font-size="22" font-weight="900" fill="#4a5fc1" letter-spacing="0.5">Starter</text>
+        <text x="100" y="183" text-anchor="middle" font-size="11" font-weight="500" font-style="italic" fill="#f6f7fb">Journey Begins Badge</text>
+        <rect width="200" height="200" fill="url(#gleam-rotate)" pointer-events="none"/>
+        <rect width="200" height="200" fill="url(#gleam-rotate-2)" pointer-events="none"/>
+      </svg>
+    </div>
+    <div class="small">Footer, proposal pages.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block"><h3>SVG (vector, accessible)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/hero.svg"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="200" height="200"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>PNG (universal raster)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/hero.png"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="200" height="200"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>iframe (HMAC-bound, animated-capable)</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/starter/{recipient-id}/hero"
+  width="200" height="200" style="border:0; overflow:hidden" loading="lazy"
+  title="Aurora Gracewood Starter {year} — {recipient-name}"&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 2 — compact 120×120 (square small) -->
+  <div class="ff-card">
+    <span class="ff-num">2</span>
+    <div class="ff-meta">compact · 120×120</div>
+    <div class="ff-preview">
+      <svg class="badge-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+        <defs><mask id="m-compact" mask-type="alpha"><image href="../../assets/mark.svg" x="40" y="40" width="40" height="40"/></mask></defs>
+        <image href="starter.png" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid slice"/>
+        <rect x="4" y="4" width="112" height="112" fill="none" stroke="url(#ag-border)" stroke-width="2"/>
+        <text x="60" y="32" text-anchor="middle" font-size="5" font-weight="800" letter-spacing="1.2" fill="#f6f7fb">AURORA GRACEWOOD</text>
+        <text x="28" y="64" text-anchor="middle" font-size="11" font-weight="900" fill="#c47a4a">20</text>
+        <g mask="url(#m-compact)"><rect x="40" y="40" width="40" height="40" fill="url(#copper-sheen)"/></g>
+        <text x="92" y="64" text-anchor="middle" font-size="11" font-weight="900" fill="#c47a4a">26</text>
+        <text x="60" y="96" text-anchor="middle" font-size="14" font-weight="900" fill="#4a5fc1" letter-spacing="0.4">Starter</text>
+        <text x="60" y="108" text-anchor="middle" font-size="7" font-weight="500" font-style="italic" fill="#f6f7fb">Journey Begins Badge</text>
+        <rect width="120" height="120" fill="url(#gleam-rotate)" pointer-events="none"/>
+        <rect width="120" height="120" fill="url(#gleam-rotate-2)" pointer-events="none"/>
+      </svg>
+    </div>
+    <div class="small">Sidebar, multi-badge row.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block"><h3>SVG (vector, accessible)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/compact.svg"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="120" height="120"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>PNG (universal raster)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/compact.png"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="120" height="120"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>iframe (HMAC-bound, animated-capable)</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/starter/{recipient-id}/compact"
+  width="120" height="120" style="border:0; overflow:hidden" loading="lazy"
+  title="Aurora Gracewood Starter {year} — {recipient-name}"&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 3 — inline 240×60 (wide thin) -->
+  <div class="ff-card">
+    <span class="ff-num">3</span>
+    <div class="ff-meta">inline · 240×60</div>
+    <div class="ff-preview">
+      <svg class="badge-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60">
+        <defs><mask id="m-inline" mask-type="alpha"><image href="../../assets/mark.svg" x="104" y="14" width="32" height="32"/></mask></defs>
+        <image href="starter.png" x="0" y="0" width="240" height="60" preserveAspectRatio="xMidYMid slice"/>
+        <rect x="3" y="3" width="234" height="54" fill="none" stroke="url(#ag-border)" stroke-width="2"/>
+        <text x="28" y="26" font-size="6" font-weight="800" letter-spacing="1.2" fill="#f6f7fb">AURORA</text>
+        <text x="28" y="38" font-size="6" font-weight="800" letter-spacing="1.2" fill="#f6f7fb">GRACEWOOD</text>
+        <text x="92" y="36" text-anchor="middle" font-size="11" font-weight="900" fill="#c47a4a">20</text>
+        <g mask="url(#m-inline)"><rect x="104" y="14" width="32" height="32" fill="url(#copper-sheen)"/></g>
+        <text x="148" y="36" text-anchor="middle" font-size="11" font-weight="900" fill="#c47a4a">26</text>
+        <text x="166" y="24" font-size="14" font-weight="900" fill="#4a5fc1" letter-spacing="0.4">Starter</text>
+        <text x="166" y="40" font-size="8" font-weight="500" font-style="italic" fill="#f6f7fb">Journey Begins</text>
+        <text x="166" y="52" font-size="8" font-weight="500" font-style="italic" fill="#f6f7fb">Badge</text>
+        <rect width="240" height="60" fill="url(#gleam-rotate)" pointer-events="none"/>
+        <rect width="240" height="60" fill="url(#gleam-rotate-2)" pointer-events="none"/>
+      </svg>
+    </div>
+    <div class="small">Mid-content slim strip.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block"><h3>SVG (vector, accessible)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/inline.svg"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="240" height="60"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>PNG (universal raster)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/inline.png"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="240" height="60"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>iframe (HMAC-bound, animated-capable)</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/starter/{recipient-id}/inline"
+  width="240" height="60" style="border:0; overflow:hidden" loading="lazy"
+  title="Aurora Gracewood Starter {year} — {recipient-name}"&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 4 — banner 480×96 (wide statement) -->
+  <div class="ff-card">
+    <span class="ff-num">4</span>
+    <div class="ff-meta">banner · 480×96</div>
+    <div class="ff-preview">
+      <svg class="badge-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 96" width="480" height="96">
+        <defs><mask id="m-banner" mask-type="alpha"><image href="../../assets/mark.svg" x="196" y="16" width="64" height="64"/></mask></defs>
+        <image href="starter.png" x="0" y="0" width="480" height="96" preserveAspectRatio="xMidYMid slice"/>
+        <rect x="4" y="4" width="472" height="88" fill="none" stroke="url(#ag-border)" stroke-width="3"/>
+        <text x="100" y="42" text-anchor="middle" font-size="9" font-weight="800" letter-spacing="1.6" fill="#f6f7fb">AURORA</text>
+        <text x="100" y="56" text-anchor="middle" font-size="9" font-weight="800" letter-spacing="1.6" fill="#f6f7fb">GRACEWOOD</text>
+        <text x="180" y="56" text-anchor="middle" font-size="20" font-weight="900" fill="#c47a4a" letter-spacing="-0.5">20</text>
+        <g mask="url(#m-banner)"><rect x="196" y="16" width="64" height="64" fill="url(#copper-sheen)"/></g>
+        <text x="276" y="56" text-anchor="middle" font-size="20" font-weight="900" fill="#c47a4a" letter-spacing="-0.5">26</text>
+        <text x="332" y="50" font-size="28" font-weight="900" fill="#4a5fc1" letter-spacing="0.5">Starter</text>
+        <text x="332" y="72" font-size="13" font-weight="500" font-style="italic" fill="#f6f7fb">Journey Begins Badge</text>
+        <rect width="480" height="96" fill="url(#gleam-rotate)" pointer-events="none"/>
+        <rect width="480" height="96" fill="url(#gleam-rotate-2)" pointer-events="none"/>
+      </svg>
+    </div>
+    <div class="small">Twitter/X header, blog top banner.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block"><h3>SVG (vector, accessible)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/banner.svg"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="480" height="96"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>PNG (universal raster)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/banner.png"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="480" height="96"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>iframe (HMAC-bound, animated-capable)</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/starter/{recipient-id}/banner"
+  width="480" height="96" style="border:0; overflow:hidden" loading="lazy"
+  title="Aurora Gracewood Starter {year} — {recipient-name}"&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 5 — vertical-card 240×360 (portrait, deepest hierarchy) -->
+  <div class="ff-card">
+    <span class="ff-num">5</span>
+    <div class="ff-meta">vertical-card · 240×360</div>
+    <div class="ff-preview">
+      <svg class="badge-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 360" width="240" height="360">
+        <defs><mask id="m-vcard" mask-type="alpha"><image href="../../assets/mark.svg" x="70" y="130" width="100" height="100"/></mask></defs>
+        <image href="starter.png" x="0" y="0" width="240" height="360" preserveAspectRatio="xMidYMid slice"/>
+        <rect x="6" y="6" width="228" height="348" fill="none" stroke="url(#ag-border)" stroke-width="3"/>
+        <text x="120" y="112" text-anchor="middle" font-size="9" font-weight="800" letter-spacing="1.8" fill="#f6f7fb">AURORA GRACEWOOD</text>
+        <text x="56" y="186" text-anchor="middle" font-size="26" font-weight="900" fill="#c47a4a" letter-spacing="-0.5">20</text>
+        <g mask="url(#m-vcard)"><rect x="70" y="130" width="100" height="100" fill="url(#copper-sheen)"/></g>
+        <text x="184" y="186" text-anchor="middle" font-size="26" font-weight="900" fill="#c47a4a" letter-spacing="-0.5">26</text>
+        <text x="120" y="262" text-anchor="middle" font-size="32" font-weight="900" fill="#4a5fc1" letter-spacing="0.6">Starter</text>
+        <text x="120" y="284" text-anchor="middle" font-size="14" font-weight="500" font-style="italic" fill="#f6f7fb">Journey Begins Badge</text>
+        <text x="120" y="306" text-anchor="middle" font-size="8" font-weight="800" letter-spacing="2" fill="#f6f7fb">INFLUENCE</text>
+        <rect width="240" height="360" fill="url(#gleam-rotate)" pointer-events="none"/>
+        <rect width="240" height="360" fill="url(#gleam-rotate-2)" pointer-events="none"/>
+      </svg>
+    </div>
+    <div class="small">Side panel, awards wall.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block"><h3>SVG (vector, accessible)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/vertical-card.svg"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="240" height="360"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>PNG (universal raster)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/vertical-card.png"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="240" height="360"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>iframe (HMAC-bound, animated-capable)</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/starter/{recipient-id}/vertical-card"
+  width="240" height="360" style="border:0; overflow:hidden" loading="lazy"
+  title="Aurora Gracewood Starter {year} — {recipient-name}"&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 6 — square-sticker 300×300 -->
+  <div class="ff-card">
+    <span class="ff-num">6</span>
+    <div class="ff-meta">square-sticker · 300×300</div>
+    <div class="ff-preview">
+      <svg class="badge-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+        <defs><mask id="m-square" mask-type="alpha"><image href="../../assets/mark.svg" x="90" y="100" width="120" height="120"/></mask></defs>
+        <image href="starter.png" x="0" y="0" width="300" height="300" preserveAspectRatio="xMidYMid slice"/>
+        <rect x="6" y="6" width="288" height="288" fill="none" stroke="url(#ag-border)" stroke-width="3"/>
+        <text x="150" y="84" text-anchor="middle" font-size="10" font-weight="800" letter-spacing="2" fill="#f6f7fb">AURORA GRACEWOOD</text>
+        <text x="68" y="158" text-anchor="middle" font-size="28" font-weight="900" fill="#c47a4a" letter-spacing="-0.6">20</text>
+        <g mask="url(#m-square)"><rect x="90" y="100" width="120" height="120" fill="url(#copper-sheen)"/></g>
+        <text x="232" y="158" text-anchor="middle" font-size="28" font-weight="900" fill="#c47a4a" letter-spacing="-0.6">26</text>
+        <text x="150" y="248" text-anchor="middle" font-size="34" font-weight="900" fill="#4a5fc1" letter-spacing="0.6">Starter</text>
+        <text x="150" y="272" text-anchor="middle" font-size="15" font-weight="500" font-style="italic" fill="#f6f7fb">Journey Begins Badge</text>
+        <rect width="300" height="300" fill="url(#gleam-rotate)" pointer-events="none"/>
+        <rect width="300" height="300" fill="url(#gleam-rotate-2)" pointer-events="none"/>
+      </svg>
+    </div>
+    <div class="small">Instagram, printable stickers.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block"><h3>SVG (vector, accessible)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/square-sticker.svg"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="300" height="300"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>PNG (universal raster)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/square-sticker.png"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="300" height="300"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>iframe (HMAC-bound, animated-capable)</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/starter/{recipient-id}/square-sticker"
+  width="300" height="300" style="border:0; overflow:hidden" loading="lazy"
+  title="Aurora Gracewood Starter {year} — {recipient-name}"&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 7 — circle-pin 120×120 -->
+  <div class="ff-card">
+    <span class="ff-num">7</span>
+    <div class="ff-meta">circle-pin · 120×120</div>
+    <div class="ff-preview">
+      <svg class="badge-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+        <defs>
+          <clipPath id="clip-pin"><circle cx="60" cy="60" r="57"/></clipPath>
+          <mask id="m-pin" mask-type="alpha"><image href="../../assets/mark.svg" x="42" y="38" width="36" height="36"/></mask>
+        </defs>
+        <g clip-path="url(#clip-pin)">
+          <image href="starter.png" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid slice"/>
+          <text x="60" y="32" text-anchor="middle" font-size="5" font-weight="800" letter-spacing="1.2" fill="#f6f7fb">AURORA GRACEWOOD</text>
+          <text x="28" y="62" text-anchor="middle" font-size="9" font-weight="900" fill="#c47a4a">20</text>
+          <g mask="url(#m-pin)"><rect x="42" y="38" width="36" height="36" fill="url(#copper-sheen)"/></g>
+          <text x="92" y="62" text-anchor="middle" font-size="9" font-weight="900" fill="#c47a4a">26</text>
+          <text x="60" y="88" text-anchor="middle" font-size="13" font-weight="900" fill="#4a5fc1" letter-spacing="0.5">Starter</text>
+          <text x="60" y="98" text-anchor="middle" font-size="7" font-weight="500" font-style="italic" fill="#f6f7fb">Journey Begins Badge</text>
+          <rect width="120" height="120" fill="url(#gleam-rotate)" pointer-events="none"/>
+          <rect width="120" height="120" fill="url(#gleam-rotate-2)" pointer-events="none"/>
+        </g>
+        <circle cx="60" cy="60" r="57" fill="none" stroke="url(#ag-border)" stroke-width="2"/>
+      </svg>
+    </div>
+    <div class="small">Compact corner mark, profile picture overlay.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block"><h3>SVG (vector, accessible)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/circle-pin.svg"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="120" height="120"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>PNG (universal raster)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/circle-pin.png"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="120" height="120"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>iframe (HMAC-bound, animated-capable)</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/starter/{recipient-id}/circle-pin"
+  width="120" height="120" style="border:0; overflow:hidden" loading="lazy"
+  title="Aurora Gracewood Starter {year} — {recipient-name}"&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 8 — mini-chip 200×32 (very thin, three-zone layout) -->
+  <div class="ff-card">
+    <span class="ff-num">8</span>
+    <div class="ff-meta">mini-chip · 200×32</div>
+    <div class="ff-preview">
+      <svg class="badge-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 32" width="200" height="32">
+        <defs><mask id="m-mini" mask-type="alpha"><image href="../../assets/mark.svg" x="92" y="4" width="24" height="24"/></mask></defs>
+        <image href="starter.png" x="0" y="0" width="200" height="32" preserveAspectRatio="xMidYMid slice"/>
+        <rect x="2" y="2" width="196" height="28" fill="none" stroke="url(#ag-border)" stroke-width="2"/>
+        <text x="16" y="14" font-size="5" font-weight="800" letter-spacing="1" fill="#f6f7fb">AURORA</text>
+        <text x="16" y="24" font-size="5" font-weight="800" letter-spacing="1" fill="#f6f7fb">GRACEWOOD</text>
+        <text x="84" y="22" text-anchor="middle" font-size="8" font-weight="900" fill="#c47a4a">20</text>
+        <g mask="url(#m-mini)"><rect x="92" y="4" width="24" height="24" fill="url(#copper-sheen)"/></g>
+        <text x="124" y="22" text-anchor="middle" font-size="8" font-weight="900" fill="#c47a4a">26</text>
+        <text x="138" y="20" font-size="11" font-weight="900" fill="#4a5fc1" letter-spacing="0.3">Starter</text>
+        <text x="138" y="28" font-size="6" font-weight="500" font-style="italic" fill="#f6f7fb">Journey Begins Badge</text>
+        <rect width="200" height="32" fill="url(#gleam-rotate)" pointer-events="none"/>
+        <rect width="200" height="32" fill="url(#gleam-rotate-2)" pointer-events="none"/>
+      </svg>
+    </div>
+    <div class="small">Inline text mention, footer line.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block"><h3>SVG (vector, accessible)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/mini-chip.svg"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="200" height="32"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>PNG (universal raster)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/mini-chip.png"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="200" height="32"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>iframe (HMAC-bound, animated-capable)</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/starter/{recipient-id}/mini-chip"
+  width="200" height="32" style="border:0; overflow:hidden" loading="lazy"
+  title="Aurora Gracewood Starter {year} — {recipient-name}"&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 9 — email-strip 400×64 (wide thin) -->
+  <div class="ff-card">
+    <span class="ff-num">9</span>
+    <div class="ff-meta">email-strip · 400×64</div>
+    <div class="ff-preview">
+      <svg class="badge-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 64" width="400" height="64">
+        <defs><mask id="m-email" mask-type="alpha"><image href="../../assets/mark.svg" x="176" y="8" width="48" height="48"/></mask></defs>
+        <image href="starter.png" x="0" y="0" width="400" height="64" preserveAspectRatio="xMidYMid slice"/>
+        <rect x="3" y="3" width="394" height="58" fill="none" stroke="url(#ag-border)" stroke-width="3"/>
+        <text x="44" y="28" font-size="8" font-weight="800" letter-spacing="1.5" fill="#f6f7fb">AURORA</text>
+        <text x="44" y="42" font-size="8" font-weight="800" letter-spacing="1.5" fill="#f6f7fb">GRACEWOOD</text>
+        <text x="158" y="38" text-anchor="middle" font-size="14" font-weight="900" fill="#c47a4a">20</text>
+        <g mask="url(#m-email)"><rect x="176" y="8" width="48" height="48" fill="url(#copper-sheen)"/></g>
+        <text x="242" y="38" text-anchor="middle" font-size="14" font-weight="900" fill="#c47a4a">26</text>
+        <text x="266" y="36" font-size="20" font-weight="900" fill="#4a5fc1" letter-spacing="0.5">Starter</text>
+        <text x="266" y="52" font-size="11" font-weight="500" font-style="italic" fill="#f6f7fb">Journey Begins Badge</text>
+        <rect width="400" height="64" fill="url(#gleam-rotate)" pointer-events="none"/>
+        <rect width="400" height="64" fill="url(#gleam-rotate-2)" pointer-events="none"/>
+      </svg>
+    </div>
+    <div class="small">Email signature wide-screen. <em>Use PNG variant for email — most clients strip SVG.</em></div>
+    <details class="ff-snippets">
+      <summary>Embed snippets <em style="font-weight:400;color:var(--muted);font-size:11px">— PNG recommended for email; most clients strip SVG</em></summary>
+      <div class="snippet-block"><h3>PNG (universal raster) — recommended for email</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/email-strip.png"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="400" height="64"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>SVG (vector, accessible) — for non-email surfaces</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/starter/{recipient-id}/email-strip.svg"
+  alt="Aurora Gracewood Starter {year} — {recipient-name}"
+  width="400" height="64"&gt;</code></pre>
+      </div>
+      <div class="snippet-block"><h3>iframe (HMAC-bound, animated-capable) — for non-email surfaces</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/starter/{recipient-id}/email-strip"
+  width="400" height="64" style="border:0; overflow:hidden" loading="lazy"
+  title="Aurora Gracewood Starter {year} — {recipient-name}"&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+</div>
+
+<p class="small" style="margin-top:48px;border-top:1px solid var(--border);padding-top:16px">
+  Layout data: <code>layouts.json</code>. Master snippet template: <code>../../example.html</code>. Brand system: <code>../../assets/system.md</code>. Mark: <code>../../assets/mark.svg</code>.
+</p>
+
+<script>
+/* Dynamic recipient driver. Classifies SVG text + snippet code blocks by initial content,
+   then re-renders all 9 form factors when the input changes. Mirrors the production
+   render_badge() dispatcher in backend/main.py — same conceptual model: one (recipient, badge)
+   tuple drives N form factors. */
+(() => {
+  const slots = { awardee: [], awardee1: [], awardee2: [], yearL: [], yearR: [] };
+  const snippets = [];
+
+  document.querySelectorAll('svg.badge-svg text').forEach(t => {
+    const txt = (t.textContent || '').trim();
+    const fill = t.getAttribute('fill');
+    if (txt === 'AURORA GRACEWOOD') slots.awardee.push(t);
+    else if (txt === 'AURORA') slots.awardee1.push(t);
+    else if (txt === 'GRACEWOOD') slots.awardee2.push(t);
+    else if (fill === '#c47a4a' && txt === '20') slots.yearL.push(t);
+    else if (fill === '#c47a4a' && txt === '26') slots.yearR.push(t);
+  });
+
+  document.querySelectorAll('pre.snippet code').forEach(code => {
+    code.dataset.template = code.textContent;
+    snippets.push(code);
+  });
+
+  // Wrap each badge SVG in an <a> so it click-throughs to the live profile,
+  // matching production behavior. Target host is me-think:8000 (where the FastAPI
+  // backend hosts /u/{slug}). Opens in a new tab so the sandbox keeps its state.
+  const badgeLinks = [];
+  document.querySelectorAll('svg.badge-svg').forEach(svg => {
+    const a = document.createElement('a');
+    a.className = 'ag-badge-link';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    svg.parentNode.insertBefore(a, svg);
+    a.appendChild(svg);
+    badgeLinks.push(a);
+  });
+
+  const inDisplay = document.getElementById('inp-display');
+  const inSlug    = document.getElementById('inp-slug');
+  const inYear    = document.getElementById('inp-year');
+
+  function render() {
+    const display = (inDisplay.value || '').trim() || 'Audora Graywood';
+    const slug    = (inSlug.value || '').trim() || 'audora-graywood';
+    const yearRaw = (inYear.value || '').trim() || '2026';
+    const year    = yearRaw.replace(/\D/g, '').padEnd(4, '0').slice(0, 4);
+    const upper   = display.toUpperCase();
+    const words   = upper.split(/\s+/).filter(Boolean);
+    const line1   = words[0] || upper;
+    const line2   = words.slice(1).join(' ') || '';
+    const yl      = year.slice(0, 2);
+    const yr      = year.slice(2);
+
+    slots.awardee.forEach(t => t.textContent = upper);
+    slots.awardee1.forEach(t => t.textContent = line1);
+    slots.awardee2.forEach(t => t.textContent = line2);
+    slots.yearL.forEach(t => t.textContent = yl);
+    slots.yearR.forEach(t => t.textContent = yr);
+
+    snippets.forEach(code => {
+      code.textContent = code.dataset.template
+        .replace(/\{recipient-id\}/g, slug)
+        .replace(/\{recipient-name\}/g, display)
+        .replace(/\{year\}/g, year);
+    });
+
+    const profileUrl = 'http://me-think:8000/u/' + encodeURIComponent(slug);
+    const profileTitle = 'Starter · ' + upper + ' · ' + year + ' — opens /u/' + slug;
+    badgeLinks.forEach(a => {
+      a.href = profileUrl;
+      a.title = profileTitle;
+    });
+  }
+
+  inDisplay.addEventListener('input', render);
+  inSlug.addEventListener('input', render);
+  inYear.addEventListener('input', render);
+  render();  // initial paint with default test recipient
+})();
+</script>
+
+</body>
+</html>

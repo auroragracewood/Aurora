@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manage Users · Aurora Gracewood</title>
+<link rel="stylesheet" href="/account/realm.css" />
+<script src="/account/realm.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="realm-banner superuser">
+    <span>SUPERUSER REALM · Manage Users</span>
+    <span class="as-info">acting as user_id=<span id="as-display"></span></span>
+  </div>
+  <nav class="nav"><a data-realm-link href="/g-1vl00d/superuser">Profile</a>
+<a data-realm-link href="/g-1vl00d/profile-edit">Edit profile</a>
+<a data-realm-link href="/g-1vl00d/settings">Settings</a>
+<a data-realm-link href="/g-1vl00d/notifications">Notifications</a>
+<a data-realm-link href="/g-1vl00d/sessions">Sessions</a>
+<a data-realm-link href="/g-1vl00d/activity">Activity</a>
+<a data-realm-link href="/g-1vl00d/messages">Messages</a>
+<a data-realm-link href="/g-1vl00d/manage-users">Manage users</a></nav>
+  
+<section class="card">
+  <h2>All users <span class="meta">— click a row to manage</span></h2>
+  <div id="users-list">loading…</div>
+</section>
+
+<!-- USER DETAIL MODAL -->
+<div id="user-modal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div id="modal-avatar"></div>
+      <div style="flex:1">
+        <h2 id="modal-name" style="margin:0 0 4px;font-size:1.2rem"></h2>
+        <div id="modal-meta" style="font-size:.78rem;color:var(--gc-dim);font-family:ui-monospace,monospace"></div>
+      </div>
+      <button class="modal-close" onclick="closeUserModal()">×</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab is-active" data-tab="profile" onclick="switchTab('profile')">Profile</button>
+      <button class="modal-tab" data-tab="roles" onclick="switchTab('roles')">Roles</button>
+      <button class="modal-tab" data-tab="activity" onclick="switchTab('activity')">Activity</button>
+      <button class="modal-tab" data-tab="messages" onclick="switchTab('messages')">Messages</button>
+      <button class="modal-tab" data-tab="sessions" onclick="switchTab('sessions')">Sessions</button>
+      <button class="modal-tab" data-tab="account" onclick="switchTab('account')">Account</button>
+    </div>
+    <div class="modal-body" id="modal-body">loading…</div>
+  </div>
+</div>
+
+<script>
+let MODAL_USER = null;
+let ACTOR_ROLE = null;
+
+async function loadUsers() {
+  const me = await AURORA.api("GET", "/api/me");
+  ACTOR_ROLE = me.role;
+  const users = await AURORA.api("GET", "/api/users");
+  AURORA.el("users-list").innerHTML =
+    '<table class="user-list-table"><thead><tr>' +
+    '<th>id</th><th>user</th><th>role</th><th>extra</th><th>status</th>' +
+    '</tr></thead><tbody>' +
+    users.map(u =>
+      '<tr class="user-row" onclick="openUserModal(' + u.id + ')">' +
+      '<td class="mono">' + u.id + '</td>' +
+      '<td><div style="display:flex;align-items:center;gap:10px">' +
+        AURORA.avatarHTML(u, 32) +
+        '<div><div class="ulist-name">' + (u.display_name || "—") + '</div>' +
+        '<div class="ulist-handle">@' + (u.username || "—") + ' · ' + u.email + '</div></div>' +
+      '</div></td>' +
+      '<td><span class="role-tag ' + u.role + '">' + u.role + '</span></td>' +
+      '<td>' + (u.additional_roles && u.additional_roles.length
+        ? u.additional_roles.map(r => '<span class="role-chip-mini" title="' + r.role_name + (r.year ? " " + r.year : "") + '">' + (r.emoji||"") + '</span>').join("")
+        : '<span style="color:var(--gc-dim);font-size:.72rem">—</span>') + '</td>' +
+      '<td><span class="status-' + u.status + '">' + u.status + '</span></td>' +
+      '</tr>'
+    ).join("") + '</tbody></table>';
+}
+
+async function openUserModal(uid) {
+  MODAL_USER = uid;
+  AURORA.el("user-modal").style.display = "flex";
+  // Header
+  const users = await AURORA.api("GET", "/api/users");
+  const u = users.find(x => x.id === uid);
+  if (!u) return;
+  AURORA.el("modal-avatar").innerHTML = AURORA.avatarHTML(u, 56);
+  AURORA.el("modal-name").textContent = u.display_name || u.email;
+  AURORA.el("modal-meta").textContent = "#" + u.id + " · @" + (u.username || "—") + " · " + u.email + " · " + u.role + " · " + u.status;
+  // Default tab
+  switchTab("profile");
+}
+
+function closeUserModal() {
+  AURORA.el("user-modal").style.display = "none";
+  MODAL_USER = null;
+  loadUsers();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll(".modal-tab").forEach(b => b.classList.toggle("is-active", b.dataset.tab === tab));
+  const body = AURORA.el("modal-body");
+  body.innerHTML = "loading…";
+  if (tab === "profile") return renderProfileTab(body);
+  if (tab === "roles") return renderRolesTab(body);
+  if (tab === "activity") return renderActivityTab(body);
+  if (tab === "messages") return renderMessagesTab(body);
+  if (tab === "sessions") return renderSessionsTab(body);
+  if (tab === "account") return renderAccountTab(body);
+}
+
+async function renderProfileTab(body) {
+  const users = await AURORA.api("GET", "/api/users");
+  const u = users.find(x => x.id === MODAL_USER);
+  body.innerHTML =
+    '<div class="row"><span class="label">Avatar URL</span><input id="m-avatar" value="' + (u.avatar_url||"") + '" /><span></span></div>' +
+    '<div class="row"><span class="label">Display name</span><input id="m-display" value="' + (u.display_name||"") + '" /><span></span></div>' +
+    '<div class="row"><span class="label">Username</span><input id="m-username" value="' + (u.username||"") + '" /><span></span></div>' +
+    '<div class="row"><span class="label">Slug</span><input id="m-slug" value="' + (u.slug||"") + '" /><span></span></div>' +
+    '<div class="row"><span class="label">Bio</span><div style="flex:1"><textarea id="m-bio" maxlength="160">' + (u.bio||"") + '</textarea><div class="bio-counter" id="m-bio-counter">0 / 160</div></div><span></span></div>' +
+    '<div style="margin-top:14px"><button class="btn" onclick="saveProfile()">Save profile</button></div>' +
+    '<div class="status" id="m-profile-status"></div>';
+  function upd() {
+    const v = AURORA.el("m-bio").value || "";
+    AURORA.el("m-bio-counter").textContent = v.length + " / 160";
+    AURORA.el("m-bio-counter").classList.toggle("over", v.length > 160);
+  }
+  AURORA.el("m-bio").addEventListener("input", upd);
+  upd();
+}
+async function saveProfile() {
+  try {
+    await AURORA.api("PUT", "/api/users/" + MODAL_USER, {
+      avatar_url: AURORA.el("m-avatar").value,
+      display_name: AURORA.el("m-display").value,
+      username: AURORA.el("m-username").value,
+      slug: AURORA.el("m-slug").value,
+      bio: AURORA.el("m-bio").value,
+    });
+    AURORA.setStatus("m-profile-status", "Saved.", true);
+  } catch (e) { AURORA.setStatus("m-profile-status", e.message, false); }
+}
+
+async function renderRolesTab(body) {
+  const [roles, catalog] = await Promise.all([
+    AURORA.api("GET", "/api/users/" + MODAL_USER + "/roles"),
+    AURORA.api("GET", "/api/role-catalog"),
+  ]);
+  const PROTECTED = ["Honoree","Finalist","Winner"];
+  body.innerHTML =
+    '<h3 style="margin:0 0 10px;font-size:.86rem;color:var(--gc-dim)">Current additional roles</h3>' +
+    (roles.length === 0
+      ? '<p style="color:var(--gc-dim);font-size:.86rem">No additional roles assigned.</p>'
+      : '<div style="display:flex;flex-direction:column;gap:8px">' +
+        roles.map(r => {
+          const protectedRole = PROTECTED.indexOf(r.role_name) >= 0;
+          const canRemove = ACTOR_ROLE === "superuser" || !protectedRole;
+          return '<div class="role-list-row">' +
+            '<span class="role-chip">' + (r.emoji||"") + " " + r.role_name + (r.year ? " " + r.year : "") + '</span>' +
+            (canRemove
+              ? '<button class="btn-danger" onclick="removeRole(' + r.id + ')">Remove</button>'
+              : '<span class="protected-note" title="Only superuser can remove this">🔒 superuser-only removal</span>') +
+            '</div>';
+        }).join("") + '</div>'
+    ) +
+    '<h3 style="margin:18px 0 10px;font-size:.86rem;color:var(--gc-dim)">Grant a role</h3>' +
+    '<div class="row"><span class="label">Role</span><select id="m-role-name">' +
+      catalog.map(r => '<option value="' + r.name + '">' + r.emoji + ' ' + r.name + '</option>').join("") +
+    '</select><span></span></div>' +
+    '<div class="row"><span class="label">Year (optional)</span><input id="m-role-year" type="number" placeholder="2026" /><span></span></div>' +
+    '<div style="margin-top:14px"><button class="btn" onclick="grantRole()">Grant role</button></div>' +
+    '<div class="status" id="m-roles-status"></div>';
+}
+async function grantRole() {
+  try {
+    const payload = { role_name: AURORA.el("m-role-name").value };
+    const y = AURORA.el("m-role-year").value.trim();
+    if (y) payload.year = parseInt(y);
+    await AURORA.api("POST", "/api/users/" + MODAL_USER + "/roles", payload);
+    AURORA.setStatus("m-roles-status", "Granted.", true);
+    renderRolesTab(AURORA.el("modal-body"));
+  } catch (e) { AURORA.setStatus("m-roles-status", e.message, false); }
+}
+async function removeRole(rid) {
+  try {
+    await AURORA.api("DELETE", "/api/users/" + MODAL_USER + "/roles/" + rid);
+    renderRolesTab(AURORA.el("modal-body"));
+  } catch (e) { alert(e.message); }
+}
+
+async function renderActivityTab(body) {
+  const list = await AURORA.api("GET", "/api/users/" + MODAL_USER + "/activity");
+  body.innerHTML = list.length === 0
+    ? '<p style="color:var(--gc-dim);font-size:.86rem">No activity for this user.</p>'
+    : '<table><thead><tr><th>When</th><th>Action</th><th>Detail</th></tr></thead><tbody>' +
+      list.map(a => '<tr><td class="mono" style="font-size:.74rem">' + AURORA.fmtTs(a.created_at) + '</td><td>' + a.action + '</td><td class="mono" style="font-size:.74rem;color:var(--gc-dim)">' + (a.detail||"") + '</td></tr>').join("") +
+      '</tbody></table>';
+}
+
+async function renderMessagesTab(body) {
+  const list = await AURORA.api("GET", "/api/users/" + MODAL_USER + "/messages");
+  body.innerHTML = list.length === 0
+    ? '<p style="color:var(--gc-dim);font-size:.86rem">No messages involving this user.</p>'
+    : list.map(m => {
+        const inbound = m.to_user === MODAL_USER;
+        const other = inbound ? (m.from_name + " (#" + m.from_user + ")") : (m.to_name + " (#" + m.to_user + ")");
+        return '<div class="msg-row">' +
+          '<div><div class="msg-from">' + (inbound ? '↓ FROM' : '↑ TO') + ' ' + other + '</div>' +
+          '<div class="msg-subject">' + (m.subject||"(no subject)") + '</div>' +
+          '<div class="msg-body">' + m.body + '</div></div>' +
+          '<div class="msg-meta">' + AURORA.fmtTs(m.created_at) + '</div></div>';
+      }).join("");
+}
+
+async function renderSessionsTab(body) {
+  if (ACTOR_ROLE !== "superuser") {
+    body.innerHTML = '<p style="color:var(--gc-dim);font-size:.86rem">Sessions visible to superuser only.</p>';
+    return;
+  }
+  const list = await AURORA.api("GET", "/api/users/" + MODAL_USER + "/sessions");
+  body.innerHTML = list.length === 0
+    ? '<p style="color:var(--gc-dim);font-size:.86rem">No tracked sessions for this user.</p>'
+    : '<table><thead><tr><th>id</th><th>user agent</th><th>ip</th><th>last seen</th></tr></thead><tbody>' +
+      list.map(s => '<tr><td class="mono" style="font-size:.74rem">' + s.id + '</td><td>' + (s.user_agent||"—") + '</td><td>' + (s.ip||"—") + '</td><td>' + AURORA.fmtTs(s.last_seen_at) + '</td></tr>').join("") +
+      '</tbody></table>';
+}
+
+async function renderAccountTab(body) {
+  const users = await AURORA.api("GET", "/api/users");
+  const u = users.find(x => x.id === MODAL_USER);
+  const canChangeRole = ACTOR_ROLE === "superuser";
+  const locked = !!u.profile_lock;
+  body.innerHTML =
+    '<div class="row"><span class="label">Primary role</span>' +
+      (canChangeRole
+        ? '<select id="m-primary-role"><option value="superuser">superuser</option><option value="admin">admin</option><option value="client">client</option></select>'
+        : '<span class="value"><span class="role-tag ' + u.role + '">' + u.role + '</span> <em style="color:var(--gc-dim);font-size:.76rem;margin-left:8px">superuser-only</em></span>') +
+    '<span></span></div>' +
+    '<div class="row"><span class="label">Status</span><select id="m-status">' +
+      ['active','pending','suspended'].map(s => '<option value="' + s + '"' + (s===u.status ? ' selected' : '') + '>' + s + '</option>').join("") +
+    '</select><span></span></div>' +
+    '<div class="row"><span class="label">Public profile</span><select id="m-public"' + (locked ? ' disabled class="locked-public"' : '') + '>' +
+      '<option value="0"' + (!u.public_profile ? ' selected' : '') + '>Hidden</option>' +
+      '<option value="1"' + (u.public_profile ? ' selected' : '') + '>Visible</option>' +
+    '</select><span></span></div>' +
+    '<div class="row"><span class="label">Lock profile hidden</span>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:.86rem">' +
+        '<input type="checkbox" id="m-lock"' + (locked ? ' checked' : '') + ' style="width:auto"> ' +
+        '<span>When ON: forces profile hidden + the user cannot toggle public on their own page.</span>' +
+      '</label>' +
+    '<span></span></div>' +
+    '<div style="margin-top:14px"><button class="btn" onclick="saveAccount()">Save account changes</button></div>' +
+    '<div class="status" id="m-account-status"></div>';
+  if (canChangeRole) AURORA.el("m-primary-role").value = u.role;
+  // Sync lock <-> public_profile in UI: turning lock on greys out public + sets it to hidden visually
+  AURORA.el("m-lock").addEventListener("change", function () {
+    const pub = AURORA.el("m-public");
+    if (this.checked) { pub.value = "0"; pub.disabled = true; pub.classList.add("locked-public"); }
+    else { pub.disabled = false; pub.classList.remove("locked-public"); }
+  });
+}
+async function saveAccount() {
+  try {
+    const payload = {
+      status: AURORA.el("m-status").value,
+      profile_lock: AURORA.el("m-lock").checked ? 1 : 0,
+    };
+    // public_profile only sent if select is enabled (not locked)
+    if (!AURORA.el("m-public").disabled) {
+      payload.public_profile = parseInt(AURORA.el("m-public").value);
+    }
+    if (ACTOR_ROLE === "superuser") payload.role = AURORA.el("m-primary-role").value;
+    await AURORA.api("PUT", "/api/users/" + MODAL_USER, payload);
+    AURORA.setStatus("m-account-status", "Saved.", true);
+  } catch (e) { AURORA.setStatus("m-account-status", e.message, false); }
+}
+
+loadUsers();
+</script>
+
+</div>
+<script>document.getElementById("as-display").textContent = AURORA.asId;</script>
+</body>
+</html>

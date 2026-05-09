@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BadDB — Snippet Template (Tier B master)</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1c1f2a;
+    --muted: #7d8a99;
+    --border: #cccfd6;
+    --code-bg: #f6f7fb;
+    --code-fg: #1c1f2a;
+    --accent: #4a5fc1;
+    --pink: #f4cfd9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px;
+    font-family: 'FF Meta','Meta Pro','Meta','Inter',system-ui,-apple-system,sans-serif;
+    background: var(--bg); color: var(--fg);
+    line-height: 1.5;
+  }
+  h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -.01em; }
+  .lede { color: var(--muted); margin: 0 0 32px; max-width: 60ch; }
+  h2 {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 40px 0 14px; font-weight: 700;
+    border-top: 1px solid var(--border); padding-top: 24px;
+  }
+  h3 { font-size: 13px; margin: 12px 0 6px; font-weight: 700; }
+  .small { font-size: 12px; color: var(--muted); }
+
+  /* Notes / banners */
+  .note {
+    background: rgba(244,207,217,.18);
+    border-left: 3px solid var(--pink);
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .note.locked { background: rgba(74,95,193,.08); border-left-color: var(--accent); }
+  .note.rules  { background: #fff8e6; border-left-color: #c47a4a; }
+
+  /* Form factor preview grid */
+  .ff-grid { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .ff-card {
+    border: 1px solid var(--border);
+    padding: 16px;
+    background: var(--bg);
+    display: flex; flex-direction: column; gap: 8px;
+    position: relative;
+    width: 540px;
+  }
+  .ff-num {
+    position: absolute;
+    top: -10px; left: -10px;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--accent); color: #ffffff;
+    font-family: ui-monospace, monospace;
+    font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+    box-shadow: 0 2px 6px rgba(0,0,0,.18);
+    z-index: 2;
+  }
+  .ff-meta {
+    font-family: ui-monospace, monospace; font-size: 11px;
+    color: var(--muted);
+  }
+  .ff-preview {
+    background: repeating-conic-gradient(#f5f5f5 0% 25%, #ffffff 0% 50%) 0 0/20px 20px;
+    padding: 12px;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 80px;
+  }
+  .ff-preview img { display: block; }
+
+  /* Collapsible snippet block per form factor */
+  details.ff-snippets {
+    margin-top: 4px;
+    border-top: 1px dashed var(--border);
+    padding-top: 8px;
+  }
+  details.ff-snippets summary {
+    cursor: pointer; font-size: 12px; font-weight: 700;
+    color: var(--accent); padding: 2px 0;
+    list-style: none;
+  }
+  details.ff-snippets summary::before {
+    content: "▸ "; display: inline-block; transition: transform 120ms;
+  }
+  details.ff-snippets[open] summary::before {
+    content: "▾ ";
+  }
+  .snippet-block { margin: 10px 0 4px; }
+  pre.snippet {
+    background: var(--code-bg); color: var(--code-fg);
+    padding: 10px; margin: 4px 0 0;
+    font-family: ui-monospace, monospace; font-size: 10.5px;
+    line-height: 1.55;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+  }
+  pre.snippet code { white-space: pre-wrap; word-break: break-word; }
+
+  /* Anti-counterfeit stack box */
+  .stack {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+  .stack ul { margin: 0; padding-left: 20px; }
+  .stack li { font-size: 13px; margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<h1>BadDB — Snippet Template <span style="font-size:14px;color:#7d8a99;font-weight:400">· Tier B master</span></h1>
+<p class="lede">Canonical reference for what badge snippets look like across all 9 representation form factors. <strong>This file is the master template</strong> — per-badge designs copy this structure into their own folder under <code>designs/{year}/{badge-slug}/</code> and replace placeholders with that badge's artwork.</p>
+
+<div class="note locked">
+  <strong>Two-tier architecture (locked 2026-05-08).</strong>
+  <ul style="margin:6px 0 0;padding-left:20px;font-size:12px">
+    <li><strong>Tier A — Real Award Badges</strong> (Finalists + Winners): ONE exclusive portrait form factor, smart <code>&lt;script&gt;</code> embed, manual per-domain ceremony install. Designed in a separate pass — not here.</li>
+    <li><strong>Tier B — Representation Badges</strong> (Starter, on-signup, applicant, etc.): the 9 form factors below, self-serve copy-paste snippets. <strong>This file is for Tier B only.</strong></li>
+  </ul>
+</div>
+
+<div class="note">
+  <strong>How to use this template.</strong> When we design a specific Tier B badge (Starter is first):
+  <ol style="margin:6px 0 0;padding-left:20px;font-size:12px">
+    <li>Copy this <code>example.html</code> into <code>designs/{year}/{badge-slug}/example.html</code></li>
+    <li>Replace each form factor's placeholder SVG with that badge's actual SVG for that form factor</li>
+    <li>Replace <code>{kind}</code>, <code>{token}</code>, <code>{year}</code>, <code>{identifier}</code> in the snippet samples with that badge's real values</li>
+    <li>Add badge-specific notes / variations to that copy — leave THIS master file generic</li>
+  </ol>
+</div>
+
+<div class="note rules">
+  <strong>Tier B design rules in progress (locked so far).</strong>
+  <ul style="margin:6px 0 0;padding-left:20px;font-size:12px">
+    <li><strong>No URLs or slugs in the visual artwork.</strong> Verifier URL and recipient @slug do NOT appear in the rendered badge — those are part of the badge's <em>click target</em> (where clicking the badge takes the viewer), not part of what's drawn. (Revised 2026-05-08.)</li>
+    <li><strong>Year splits to two parts on either side of the mark</strong> — pattern: <code>[20 [mark] 26]</code>. Year is always recorded at issuance and shown framing the central mark.</li>
+    <li>More rules incoming: tints, gradients, typographic treatments, color rules per category.</li>
+  </ul>
+</div>
+
+<!-- ============================================================
+     FORM FACTOR PREVIEWS — 9 cards, each with snippet samples
+     ============================================================ -->
+<h2>Form factors · 9 representation form factors (Tier B)</h2>
+<p class="small">Each card shows the form factor's dimensions, intended surface, and the embed snippets recipients copy. Snippets collapse by default — open to view.</p>
+
+<div class="ff-grid">
+
+  <!-- 1 -->
+  <div class="ff-card">
+    <span class="ff-num">1</span>
+    <div class="ff-meta">hero · 200×200</div>
+    <div class="ff-preview"><img src="form-factors/hero.svg" alt="hero placeholder" width="200" height="200"></div>
+    <div class="small">Footer, proposal pages, "as-seen-on" anchor.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block">
+        <h3>SVG (vector, accessible)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/hero.svg"
+  alt="Aurora Gracewood [Kind] {year} — {identifier}"
+  width="200" height="200"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>PNG (universal raster)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/hero.png"
+  alt="Aurora Gracewood [Kind] {year} — {identifier}"
+  width="200" height="200"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>iframe (HMAC-bound, animated-capable)</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/{kind}/{token}/{year}/{identifier}/hero"
+  width="200" height="200" style="border:0; overflow:hidden" loading="lazy"
+  title="Aurora Gracewood [Kind] {year} — {identifier}"&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 2 -->
+  <div class="ff-card">
+    <span class="ff-num">2</span>
+    <div class="ff-meta">compact · 120×120</div>
+    <div class="ff-preview"><img src="form-factors/compact.svg" alt="compact placeholder" width="120" height="120"></div>
+    <div class="small">Sidebar, multi-badge row, blog about-the-author.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block">
+        <h3>SVG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/compact.svg"
+  alt="..." width="120" height="120"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>PNG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/compact.png"
+  alt="..." width="120" height="120"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>iframe</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/{kind}/{token}/{year}/{identifier}/compact"
+  width="120" height="120" style="border:0; overflow:hidden" loading="lazy"
+  title="..."&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 3 -->
+  <div class="ff-card">
+    <span class="ff-num">3</span>
+    <div class="ff-meta">inline · 240×60</div>
+    <div class="ff-preview"><img src="form-factors/inline.svg" alt="inline placeholder" width="240" height="60"></div>
+    <div class="small">Mid-content, slim horizontal strip.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block">
+        <h3>SVG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/inline.svg"
+  alt="..." width="240" height="60"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>PNG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/inline.png"
+  alt="..." width="240" height="60"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>iframe</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/{kind}/{token}/{year}/{identifier}/inline"
+  width="240" height="60" style="border:0; overflow:hidden" loading="lazy"
+  title="..."&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 4 -->
+  <div class="ff-card">
+    <span class="ff-num">4</span>
+    <div class="ff-meta">banner · 480×96</div>
+    <div class="ff-preview"><img src="form-factors/banner.svg" alt="banner placeholder" width="480" height="96"></div>
+    <div class="small">Twitter/X header, blog top banner, statement piece.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block">
+        <h3>SVG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/banner.svg"
+  alt="..." width="480" height="96"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>PNG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/banner.png"
+  alt="..." width="480" height="96"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>iframe</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/{kind}/{token}/{year}/{identifier}/banner"
+  width="480" height="96" style="border:0; overflow:hidden" loading="lazy"
+  title="..."&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 5 -->
+  <div class="ff-card">
+    <span class="ff-num">5</span>
+    <div class="ff-meta">vertical-card · 240×360</div>
+    <div class="ff-preview"><img src="form-factors/vertical-card.svg" alt="vertical-card placeholder" width="240" height="360"></div>
+    <div class="small">Side panel, about page, awards wall.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block">
+        <h3>SVG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/vertical-card.svg"
+  alt="..." width="240" height="360"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>PNG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/vertical-card.png"
+  alt="..." width="240" height="360"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>iframe</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/{kind}/{token}/{year}/{identifier}/vertical-card"
+  width="240" height="360" style="border:0; overflow:hidden" loading="lazy"
+  title="..."&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 6 -->
+  <div class="ff-card">
+    <span class="ff-num">6</span>
+    <div class="ff-meta">square-sticker · 300×300</div>
+    <div class="ff-preview"><img src="form-factors/square-sticker.svg" alt="square-sticker placeholder" width="300" height="300"></div>
+    <div class="small">Instagram, printable stickers.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block">
+        <h3>SVG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/square-sticker.svg"
+  alt="..." width="300" height="300"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>PNG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/square-sticker.png"
+  alt="..." width="300" height="300"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>iframe</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/{kind}/{token}/{year}/{identifier}/square-sticker"
+  width="300" height="300" style="border:0; overflow:hidden" loading="lazy"
+  title="..."&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 7 -->
+  <div class="ff-card">
+    <span class="ff-num">7</span>
+    <div class="ff-meta">circle-pin · 120×120</div>
+    <div class="ff-preview"><img src="form-factors/circle-pin.svg" alt="circle-pin placeholder" width="120" height="120"></div>
+    <div class="small">Compact corner mark, profile picture overlay.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block">
+        <h3>SVG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/circle-pin.svg"
+  alt="..." width="120" height="120"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>PNG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/circle-pin.png"
+  alt="..." width="120" height="120"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>iframe</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/{kind}/{token}/{year}/{identifier}/circle-pin"
+  width="120" height="120" style="border:0; overflow:hidden" loading="lazy"
+  title="..."&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 8 -->
+  <div class="ff-card">
+    <span class="ff-num">8</span>
+    <div class="ff-meta">mini-chip · 200×32</div>
+    <div class="ff-preview"><img src="form-factors/mini-chip.svg" alt="mini-chip placeholder" width="200" height="32"></div>
+    <div class="small">Inline text mention, footer line.</div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block">
+        <h3>SVG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/mini-chip.svg"
+  alt="..." width="200" height="32"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>PNG</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/mini-chip.png"
+  alt="..." width="200" height="32"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>iframe</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/{kind}/{token}/{year}/{identifier}/mini-chip"
+  width="200" height="32" style="border:0; overflow:hidden" loading="lazy"
+  title="..."&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- 9 -->
+  <div class="ff-card">
+    <span class="ff-num">9</span>
+    <div class="ff-meta">email-strip · 400×64</div>
+    <div class="ff-preview"><img src="form-factors/email-strip.svg" alt="email-strip placeholder" width="400" height="64"></div>
+    <div class="small">Email signature wide-screen. <em>Note: most email clients strip SVG — use PNG here.</em></div>
+    <details class="ff-snippets">
+      <summary>Embed snippets</summary>
+      <div class="snippet-block">
+        <h3>PNG (preferred for email)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/email-strip.png"
+  alt="..." width="400" height="64"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>SVG (web only — fallback for surfaces that accept it)</h3>
+        <pre class="snippet"><code>&lt;img src="https://aurora-gracewood.com/awards/badge/{kind}/{token}/{year}/{identifier}/email-strip.svg"
+  alt="..." width="400" height="64"&gt;</code></pre>
+      </div>
+      <div class="snippet-block">
+        <h3>iframe (web only)</h3>
+        <pre class="snippet"><code>&lt;iframe src="https://aurora-gracewood.com/awards/embed/{kind}/{token}/{year}/{identifier}/email-strip"
+  width="400" height="64" style="border:0; overflow:hidden" loading="lazy"
+  title="..."&gt;&lt;/iframe&gt;</code></pre>
+      </div>
+    </details>
+  </div>
+
+</div>
+
+<!-- ============================================================
+     ANTI-COUNTERFEIT STACK
+     ============================================================ -->
+<h2>Anti-counterfeit stack (TBD — discuss one at a time)</h2>
+<div class="stack">
+  <ul>
+    <li><strong>HMAC signature</strong> in iframe URL, server-validated on every request. Tampered URL → 404.</li>
+    <li><strong>Referer header binding</strong> — iframe URL signs against the client domain. iframe loaded from wrong domain → invalid-embed fallback.</li>
+    <li><strong>Click target = verifier endpoint</strong> — clicking the badge takes the viewer to <code>/verify/{user-slug}/{badge-instance}</code>. The verifier URL and recipient @slug live in the click target, NOT in the rendered visual.</li>
+    <li><strong>Public verifier endpoint</strong> — <code>/verify/{user}/{badge-instance}</code> returns JSON: { valid, granted_at, recipient, badge, year, revoked_at }.</li>
+    <li><strong>Revocation propagation</strong> — revoked badges render "REVOKED" overlay; old screenshots stay; verifier reveals revocation.</li>
+    <li><strong>Rate limit on enumeration</strong> — per-IP cap on /verify and /badge to slow scrapers.</li>
+    <li><strong>Year-of-design freeze</strong> — old awards retain their original era-correct visuals.</li>
+    <li><strong>Form-factor exclusivity (Tier A only)</strong> — Real Award badges only ever appear in their one exclusive portrait form factor; fakes in the wrong form factor self-identify as fake. (Tier B accepts wider tamper risk in exchange for distribution.)</li>
+  </ul>
+</div>
+
+<!-- ============================================================
+     OPEN DESIGN QUESTIONS (one at a time)
+     ============================================================ -->
+<h2>Open design questions (one at a time, not all at once)</h2>
+<div class="stack">
+  <ul>
+    <li>What artwork medium for the SVG — vector geometric? Multi-layer? Photographic-feel?</li>
+    <li>Is animation universal (every badge gets a subtle motion) or premium-tier only?</li>
+    <li>Per-form-factor minimum text — what fits in mini-chip 200×32 vs vertical-card 240×360?</li>
+    <li>Year split typography — same weight on left/right halves, or asymmetric (e.g., subtle on left, prominent on right)?</li>
+    <li>Tints, gradients, treatments — design language pending Aurora's customization of the Starter mark.</li>
+    <li>Do we ship APNG variants from day one, or only PNG until animation is locked?</li>
+    <li>How does revocation render visually (overlay? muted? "REVOKED" stamp?)?</li>
+  </ul>
+</div>
+
+<p class="small" style="margin-top:48px;border-top:1px solid var(--border);padding-top:16px">
+  Source-of-truth: <code>D:\Great_Creations\Aurora-Gracewood\awards\CLAUDE.md</code>. Universal template: <code>../template.json</code>. Form factor placeholders: <code>../form-factors/</code>. Brand system reference: <code>assets/system.md</code>. Mark file: <code>assets/mark.svg</code>.
+</p>
+
+</body>
+</html>

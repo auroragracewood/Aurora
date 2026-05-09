@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Superuser Dashboard · Aurora Gracewood</title>
+<link rel="stylesheet" href="/account/realm.css" />
+<script src="/account/realm.js"></script>
+
+</head>
+<body>
+<div class="layout">
+  <div class="realm-banner superuser">
+    <span>SUPERUSER REALM · Superuser Dashboard</span>
+    <span class="as-info">acting as user_id=<span id="as-display"></span></span>
+  </div>
+  <nav class="nav"><a data-realm-link href="/g-1vl00d/superuser">Profile</a>
+<a data-realm-link href="/g-1vl00d/profile-edit">Edit profile</a>
+<a data-realm-link href="/g-1vl00d/settings">Settings</a>
+<a data-realm-link href="/g-1vl00d/notifications">Notifications</a>
+<a data-realm-link href="/g-1vl00d/sessions">Sessions</a>
+<a data-realm-link href="/g-1vl00d/activity">Activity</a>
+<a data-realm-link href="/g-1vl00d/messages">Messages</a>
+<a data-realm-link href="/g-1vl00d/manage-users">Manage users</a></nav>
+  
+<section class="card">
+  <div id="identity-row" class="identity-row">loading…</div>
+
+</section>
+<section class="card">
+  <h2>Additional Prestege and Roles</h2>
+  <div id="extra-roles">loading…</div>
+</section>
+<section class="card">
+  <h2>My Badges <span class="meta">— what shows on your public profile</span></h2>
+  <div id="dashboard-badges">loading…</div>
+</section>
+<script>
+(async () => {
+  const me = await AURORA.api("GET", "/api/me");
+  AURORA.el("identity-row").innerHTML =
+    AURORA.avatarHTML(me, 80) +
+    '<div style="flex:1">' +
+      '<h1 class="name">' + (me.display_name || "—") + '</h1>' +
+      '<div class="handle">@' + (me.username || "—") + ' · ' + me.email + '</div>' +
+      '<div style="margin-top:6px"><span class="role-tag ' + me.role + '">' + me.role + '</span></div>' +
+      AURORA.rolesChips(me.additional_roles) +
+      (me.bio ? '<div style="margin-top:8px;font-size:.88rem;color:rgba(246,247,251,.78)">' + me.bio + '</div>' : '') +
+    '</div>';
+  AURORA.el("extra-roles").innerHTML = me.additional_roles && me.additional_roles.length
+    ? AURORA.rolesChips(me.additional_roles)
+    : '<p style="color:var(--gc-dim);font-size:.86rem">No additional roles assigned yet. Admins or the superuser can grant Honoree, Finalist, Winner (per year), Partner, Provider, Sponsor, Supporter, or Actor roles.</p>';
+
+  // Dashboard badges: read-only display, badge image clicks through to destination_url.
+  const badges = await AURORA.api("GET", "/api/me/badges");
+  const visible = badges.filter(b => !b.hidden_on_profile && !b.revoked_at);
+  const tgt = AURORA.el("dashboard-badges");
+  if (!visible.length) {
+    tgt.innerHTML = '<p class="ag-rb-empty">Nothing visible on your public profile yet. <a data-realm-link href="/g-1vl00d/profile-edit">Manage badges →</a></p>';
+    tgt.querySelectorAll("a[data-realm-link]").forEach(a => a.href = AURORA.withAs(a.getAttribute("href")));
+  } else {
+    tgt.innerHTML = '<div class="ag-rb-display">' + visible.map(b => {
+      const titleEsc = (b.title || b.badge_slug).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      const altEsc = (titleEsc + ' ' + b.design_year).replace(/"/g, '&quot;');
+      const imgSrc = b.image_base_url + '/circle-pin.svg';
+      const dest = b.destination_url || '/awards/';
+      return (
+        '<div class="ag-rb-display-item">' +
+          '<a href="' + dest + '" target="_blank" rel="noopener" title="' + altEsc + '">' +
+            '<img src="' + imgSrc + '" alt="' + altEsc + '" width="120" height="120" loading="lazy" style="display:block">' +
+          '</a>' +
+          '<span class="ag-rb-label">' + titleEsc + '</span>' +
+        '</div>'
+      );
+    }).join("") + '</div>';
+  }
+})();
+</script>
+
+</div>
+<script>document.getElementById("as-display").textContent = AURORA.asId;</script>
+</body>
+</html>

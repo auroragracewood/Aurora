@@ -1,0 +1,69 @@
+# Aurora Gracewood — repo-root .gitignore
+# Backend-specific ignores live in backend/.gitignore (compounded by git).
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Environments + secrets
+.env
+.env.local
+.env.*.local
+
+# Backend artifacts
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.db
+*.sqlite
+*.sqlite3
+data/
+backend/data/
+uploads/
+
+# Frontend (when bundlers ship)
+node_modules/
+dist/
+build/
+.cache/
+
+# Tooling
+.vscode/
+.idea/
+*.iml
+
+# Backups + day-one snapshots that shouldn't ship
+backup/
+*.bak
+*.tmp
+*.log
+
+# Local server state
+*.pid
+*.lock
+
+# Secrets — NEVER push to GitHub
+.github_pat
+.resend_key
+.*.key
+*.pem
+
+# Internal canonical docs (kept D:\-only; were intentionally deleted from GitHub 2026-05-09)
+awards/CLAUDE.md
+awards/docs/
+
+# One-off debug query scripts (created on me-think, occasionally land on D:\)
+q_*.py
+backfill_*.py
+
+# Temporary clones / audit folders
+Aurora-from-github/
+*-from-github/
+
+# Day-one bloat folder that shouldn't be on GitHub (was uploaded manually 2026-05-09)
+aurora_awards_day_one/

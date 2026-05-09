@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Site Settings · Aurora Gracewood</title>
+<link rel="stylesheet" href="/account/realm.css" />
+<script src="/account/realm.js"></script>
+
+</head>
+<body>
+<div class="layout">
+  <div class="realm-banner superuser">
+    <span>SUPERUSER REALM · Site Settings</span>
+    <span class="as-info">acting as user_id=<span id="as-display"></span></span>
+  </div>
+  <nav class="nav">
+    <a data-realm-link href="/g-1vl00d/superuser">Profile</a>
+<a data-realm-link href="/g-1vl00d/profile-edit">Edit profile</a>
+<a data-realm-link href="/g-1vl00d/settings">Settings</a>
+<a data-realm-link href="/g-1vl00d/notifications">Notifications</a>
+<a data-realm-link href="/g-1vl00d/sessions">Sessions</a>
+<a data-realm-link href="/g-1vl00d/activity">Activity</a>
+<a data-realm-link href="/g-1vl00d/messages">Messages</a>
+<a data-realm-link href="/g-1vl00d/manage-users">Manage users</a>
+  </nav>
+  
+<section class="card">
+  <h2>Site settings <span class="meta">— affects entire Aurora site</span></h2>
+  <div id="settings-rows">loading…</div>
+  <div style="margin-top:14px"><button class="btn" id="save-btn">Save</button></div>
+  <div class="status" id="save-status"></div>
+</section>
+<script>
+let CURRENT = {};
+(async () => {
+  CURRENT = await AURORA.api("GET", "/api/settings");
+  const rows = AURORA.el("settings-rows");
+  rows.innerHTML = Object.keys(CURRENT).map(k =>
+    '<div class="row"><span class="label">' + k + '</span>' +
+    '<input data-k="' + k + '" value="' + (CURRENT[k] || "") + '" /><span></span></div>'
+  ).join("");
+})();
+AURORA.el("save-btn").onclick = async () => {
+  try {
+    const update = {};
+    document.querySelectorAll("[data-k]").forEach(i => update[i.dataset.k] = i.value);
+    await AURORA.api("PUT", "/api/settings", update);
+    AURORA.setStatus("save-status", "Saved.", true);
+  } catch (e) { AURORA.setStatus("save-status", e.message, false); }
+};
+</script>
+
+</div>
+<script>
+  document.getElementById("as-display").textContent = AURORA.asId;
+</script>
+</body>
+</html>

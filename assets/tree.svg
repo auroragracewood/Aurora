@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-7 -34 14 35" width="14" height="35">
+  <!-- Four-tier evergreen silhouette in forest green -->
+  <polygon points="-5,0 5,0 0,-9" fill="#2c5e3f"/>
+  <polygon points="-4,-7 4,-7 0,-16" fill="#2c5e3f"/>
+  <polygon points="-3,-14 3,-14 0,-23" fill="#2c5e3f"/>
+  <polygon points="-2,-21 2,-21 0,-30" fill="#2c5e3f"/>
+  <!-- Trunk peeking out at the base -->
+  <rect x="-0.5" y="0" width="1" height="1" fill="#1c3023"/>
+  <!-- Branch tips in moss green at each tier corner + the top -->
+  <circle cx="-5" cy="0" r="0.7" fill="#738c5e"/>
+  <circle cx="5"  cy="0" r="0.7" fill="#738c5e"/>
+  <circle cx="-4" cy="-7" r="0.6" fill="#738c5e"/>
+  <circle cx="4"  cy="-7" r="0.6" fill="#738c5e"/>
+  <circle cx="-3" cy="-14" r="0.5" fill="#738c5e"/>
+  <circle cx="3"  cy="-14" r="0.5" fill="#738c5e"/>
+  <circle cx="-2" cy="-21" r="0.4" fill="#738c5e"/>
+  <circle cx="2"  cy="-21" r="0.4" fill="#738c5e"/>
+  <circle cx="0"  cy="-30" r="0.4" fill="#738c5e"/>
+  <!-- Off-white snow caps sitting on TOP of each branch tip -->
+  <ellipse cx="-5" cy="-0.7" rx="1.0" ry="0.35" fill="#f6f7fb"/>
+  <ellipse cx="5"  cy="-0.7" rx="1.0" ry="0.35" fill="#f6f7fb"/>
+  <ellipse cx="-4" cy="-7.7" rx="0.85" ry="0.32" fill="#f6f7fb"/>
+  <ellipse cx="4"  cy="-7.7" rx="0.85" ry="0.32" fill="#f6f7fb"/>
+  <ellipse cx="-3" cy="-14.7" rx="0.72" ry="0.28" fill="#f6f7fb"/>
+  <ellipse cx="3"  cy="-14.7" rx="0.72" ry="0.28" fill="#f6f7fb"/>
+  <ellipse cx="-2" cy="-21.7" rx="0.58" ry="0.22" fill="#f6f7fb"/>
+  <ellipse cx="2"  cy="-21.7" rx="0.58" ry="0.22" fill="#f6f7fb"/>
+  <ellipse cx="0"  cy="-30.4" rx="0.5" ry="0.2" fill="#f6f7fb"/>
+</svg>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Edit Profile · Aurora Gracewood</title>
+<link rel="stylesheet" href="/account/realm.css" />
+<script src="/account/realm.js"></script>
+<style>
+.link-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: center; }
+.link-row input { flex: 1; padding: 6px 10px; }
+.link-row .link-del { background: transparent; border: 1px solid var(--gc-pink); color: var(--gc-pink); padding: 6px 10px; cursor: pointer; min-width: 38px; }
+.link-row .link-del:hover { background: var(--gc-pink); color: white; }
+.btn-secondary { background: transparent; border: 1px solid var(--gc-blueberry); color: var(--gc-blueberry); padding: 8px 14px; cursor: pointer; font-size: .85rem; }
+.btn-secondary:hover { background: var(--gc-blueberry); color: white; }
+.hint { font-size: 12px; color: var(--gc-charcoal); opacity: .6; margin-top: 6px; }
+#public-profile-link { color: var(--gc-blueberry); text-decoration: none; border-bottom: 1px solid var(--gc-pink); padding-bottom: 1px; }
+#public-profile-link:hover { color: var(--gc-pink); }
+</style>
+
+
+</head>
+<body>
+<div class="layout">
+  <div class="realm-banner client">
+    <span>CLIENT REALM · Edit Profile</span>
+    <span class="as-info">acting as user_id=<span id="as-display"></span></span>
+  </div>
+  <nav class="nav"><a data-realm-link href="/client/client">Profile</a>
+<a data-realm-link href="/client/profile-edit">Edit profile</a>
+<a data-realm-link href="/client/notifications">Notifications</a>
+<a data-realm-link href="/client/activity">Activity</a>
+<a data-realm-link href="/client/messages">Messages</a></nav>
+  
+<section class="card">
+  <h2>Edit your profile</h2>
+  <div class="row"><span class="label">Avatar URL</span><input id="avatar_url" placeholder="https://..." /><span></span></div>
+  <div class="row"><span class="label">Preview</span><div id="avatar-preview"></div><span></span></div>
+  <div class="row"><span class="label">Display name</span><input id="display_name" /><span></span></div>
+  <div class="row"><span class="label">Username</span><input id="username" /><span></span></div>
+  <div class="row"><span class="label">Slug (URL)</span><input id="slug" /><span></span></div>
+  <div class="row">
+    <span class="label">Bio</span>
+    <div style="flex:1">
+      <textarea id="bio" maxlength="160"></textarea>
+      <div class="bio-counter" id="bio-counter">0 / 160</div>
+    </div>
+    <span></span>
+  </div>
+  <div class="row"><span class="label">Public profile</span>
+    <select id="public_profile"><option value="0">Hidden</option><option value="1">Visible</option></select>
+    <span></span>
+  </div>
+  <div class="row"><span class="label">Theme</span>
+    <select id="theme"></select>
+    <span></span>
+  </div>
+  <div class="row"><span class="label">Links</span>
+    <div style="flex:1">
+      <div id="links-editor"></div>
+      <button type="button" id="add-link-btn" class="btn-secondary" style="margin-top:8px">+ Add link</button>
+      <div class="hint">Up to 6. Shows on your public profile.</div>
+    </div>
+    <span></span>
+  </div>
+  <div class="row" id="public-profile-link-row" style="display:none"><span class="label">Public URL</span>
+    <a id="public-profile-link" href="#" target="_blank">/u/...</a>
+    <span></span>
+  </div>
+    <div style="margin-top:14px"><button class="btn" id="save-btn">Save changes</button></div>
+  <div class="status" id="save-status"></div>
+</section>
+
+<section class="card">
+  <h2>My Badges <span class="meta">— what shows on your public profile</span></h2>
+  <div id="my-badges-list">loading…</div>
+  <div class="status" id="badges-status"></div>
+</section>
+
+<script>
+(async () => {
+  const me = await AURORA.api("GET", "/api/me");
+  AURORA.el("avatar_url").value = me.avatar_url || "";
+  AURORA.el("display_name").value = me.display_name || "";
+  AURORA.el("username").value = me.username || "";
+  AURORA.el("slug").value = me.slug || "";
+  AURORA.el("bio").value = me.bio || "";
+  AURORA.el("public_profile").value = String(me.public_profile || 0);
+  if (me.role === "client") {
+    AURORA.el("username").disabled = true;
+    AURORA.el("username").classList.add("locked-input");
+    AURORA.el("slug").disabled = true;
+    AURORA.el("slug").classList.add("locked-input");
+  }
+  // profile_lock: disable public_profile if locked by admin
+  if (me.profile_lock) {
+    const sel = AURORA.el("public_profile");
+    sel.disabled = true;
+    sel.classList.add("locked-public");
+    const note = document.createElement("span");
+    note.className = "profile-lock-note";
+    note.textContent = "🔒 An administrator has hidden this profile and locked it. You cannot change visibility.";
+    sel.parentNode.appendChild(note);
+  }
+  // Bio counter live
+  function updateBioCounter() {
+    const v = AURORA.el("bio").value || "";
+    const c = AURORA.el("bio-counter");
+    c.textContent = v.length + " / 160";
+    c.classList.toggle("over", v.length > 160);
+  }
+  AURORA.el("bio").addEventListener("input", updateBioCounter);
+  updateBioCounter();
+  // Avatar live preview
+  function updatePreview() {
+    const url = AURORA.el("avatar_url").value;
+    const fake = { avatar_url: url, display_name: me.display_name, email: me.email };
+    AURORA.el("avatar-preview").innerHTML = AURORA.avatarHTML(fake, 64);
+  }
+  AURORA.el("avatar_url").addEventListener("input", updatePreview);
+  updatePreview();
+  // Theme picker
+  const themes = await AURORA.api("GET", "/api/themes");
+  const themeSel = AURORA.el("theme");
+  themeSel.innerHTML = "";
+  themes.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t.id;
+    opt.textContent = t.name;
+    themeSel.appendChild(opt);
+  });
+  themeSel.value = me.theme || "aurora-light";
+
+  // Links editor
+  const linksEl = AURORA.el("links-editor");
+  let workingLinks = (me.links || []).slice();
+  function renderLinks() {
+    linksEl.innerHTML = "";
+    workingLinks.forEach((l, i) => {
+      const row = document.createElement("div");
+      row.className = "link-row";
+      const u = document.createElement("input");
+      u.type = "url"; u.placeholder = "https://..."; u.value = l.url || "";
+      u.addEventListener("input", () => workingLinks[i].url = u.value);
+      const lab = document.createElement("input");
+      lab.type = "text"; lab.placeholder = "Label"; lab.value = l.label || "";
+      lab.addEventListener("input", () => workingLinks[i].label = lab.value);
+      const del = document.createElement("button");
+      del.type = "button"; del.textContent = "X"; del.className = "link-del";
+      del.addEventListener("click", () => { workingLinks.splice(i, 1); renderLinks(); });
+      row.append(u, lab, del);
+      linksEl.appendChild(row);
+    });
+  }
+  renderLinks();
+  AURORA.el("add-link-btn").onclick = () => {
+    if (workingLinks.length >= 6) { AURORA.setStatus("save-status", "Max 6 links.", false); return; }
+    workingLinks.push({ url: "", label: "" });
+    renderLinks();
+  };
+
+  // Public URL link (only if public)
+  if (me.public_profile && !me.profile_lock) {
+    const slug = me.slug || me.id;
+    const a = AURORA.el("public-profile-link");
+    a.href = "/u/" + slug;
+    a.textContent = "/u/" + slug + " (open)";
+    AURORA.el("public-profile-link-row").style.display = "";
+  }
+  // Expose workingLinks getter on window so save handler can read it
+  window.__getWorkingLinks = () => workingLinks;
+
+  // My Badges — rich list with static-URL SVG preview, clickable title (opens embed-picker
+  // modal), show/hide toggle. Badge artwork comes from GitHub Pages CDN now (no inline SVG)
+  // — same URL the recipient embeds elsewhere on the web.
+  async function renderBadges() {
+    const badges = await AURORA.api("GET", "/api/me/badges");
+    const list = AURORA.el("my-badges-list");
+    if (!badges.length) {
+      list.innerHTML = '<p class="ag-rb-empty">No badges yet — they appear here when you earn one.</p>';
+      return;
+    }
+    const rows = badges.map(b => {
+      const checked = b.hidden_on_profile ? "" : "checked";
+      const revoked = b.revoked_at ? '<span class="ag-rb-revoked">revoked</span>' : '';
+      const titleEsc = (b.title || b.badge_slug).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      const subtitleEsc = (b.subtitle || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      const altEsc = (titleEsc + ' ' + b.design_year).replace(/"/g, '&quot;');
+      const imgSrc = b.image_base_url + '/circle-pin.svg';
+      const dest = b.destination_url || '/awards/';
+      return (
+        '<div class="ag-rb-row">' +
+          '<div class="ag-rb-svg">' +
+            '<a href="' + dest + '" target="_blank" rel="noopener" title="' + altEsc + ' — click to open destination" class="ag-rb-svg-link">' +
+              '<img src="' + imgSrc + '" alt="' + altEsc + '" width="120" height="120" loading="lazy" style="display:block">' +
+            '</a>' +
+          '</div>' +
+          '<div class="ag-rb-info">' +
+            '<button type="button" class="ag-rb-title-btn" data-slug="' + b.badge_slug + '" data-year="' + b.design_year + '">' + titleEsc + '</button>' +
+            '<div class="ag-rb-meta">' + subtitleEsc + ' · ' + b.design_year + revoked + '</div>' +
+          '</div>' +
+          '<label class="ag-rb-toggle" title="Toggle visibility on your public profile">' +
+            '<input type="checkbox" data-slug="' + b.badge_slug + '" ' + checked + ' /> Show publicly' +
+          '</label>' +
+        '</div>'
+      );
+    }).join("");
+    list.innerHTML = '<div class="ag-rb-list">' + rows + '</div>';
+
+    list.querySelectorAll('.ag-rb-title-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        AURORA.openBadgeModal(btn.dataset.slug, btn.dataset.year);
+      });
+    });
+    list.querySelectorAll('input[type="checkbox"][data-slug]').forEach(cb => {
+      cb.addEventListener('change', async () => {
+        const slug = cb.dataset.slug;
+        const hidden = !cb.checked;
+        try {
+          await AURORA.api("PUT", "/api/me/badges/" + slug + "/visibility", { hidden });
+          AURORA.setStatus("badges-status", "Saved.", true);
+        } catch (e) { AURORA.setStatus("badges-status", e.message, false); cb.checked = !cb.checked; }
+      });
+    });
+  }
+  renderBadges();
+})();
+AURORA.el("save-btn").onclick = async () => {
+  try {
+    const payload = {
+      avatar_url: AURORA.el("avatar_url").value,
+      display_name: AURORA.el("display_name").value,
+      bio: AURORA.el("bio").value,
+      public_profile: parseInt(AURORA.el("public_profile").value),
+    };
+    payload.theme = AURORA.el("theme").value;
+    payload.links = (window.__getWorkingLinks ? window.__getWorkingLinks() : []).filter(l => l.url && l.url.trim());
+    if (!AURORA.el("username").disabled) payload.username = AURORA.el("username").value;
+    if (!AURORA.el("slug").disabled) payload.slug = AURORA.el("slug").value;
+    await AURORA.api("PUT", "/api/profile/me", payload);
+    AURORA.setStatus("save-status", "Saved.", true);
+  } catch (e) { AURORA.setStatus("save-status", e.message, false); }
+};
+</script>
+
+  <section class="card">
+    <h2>Permissions <span class="meta">— what your role allows</span></h2>
+    <ul class="permissions" id="perms-list-edit">loading…</ul>
+  </section>
+  <script>
+  (async () => {
+    try {
+      const p = await AURORA.api("GET", "/api/permissions");
+      document.getElementById("perms-list-edit").innerHTML =
+        '<li style="margin-bottom:6px"><strong>Primary role:</strong> <span class="role-tag ' + p.role + '">' + p.role + '</span></li>' +
+        p.permissions.map(x => "<li>" + x + "</li>").join("");
+    } catch (e) {
+      document.getElementById("perms-list-edit").innerHTML = '<li style="color:var(--gc-pink)">Could not load permissions: ' + e.message + '</li>';
+    }
+  })();
+  </script>
+</div>
+<script>document.getElementById("as-display").textContent = AURORA.asId;</script>
+</body>
+</html>

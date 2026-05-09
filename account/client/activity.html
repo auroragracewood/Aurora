@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Activity · Aurora Gracewood</title>
+<link rel="stylesheet" href="/account/realm.css" />
+<script src="/account/realm.js"></script>
+
+</head>
+<body>
+<div class="layout">
+  <div class="realm-banner client">
+    <span>CLIENT REALM · My Activity</span>
+    <span class="as-info">acting as user_id=<span id="as-display"></span></span>
+  </div>
+  <nav class="nav">
+    <a data-realm-link href="/client/client">Profile</a>
+<a data-realm-link href="/client/profile-edit">Edit profile</a>
+<a data-realm-link href="/client/notifications">Notifications</a>
+<a data-realm-link href="/client/activity">My activity</a>
+<a data-realm-link href="/client/messages">Messages</a>
+  </nav>
+  
+<section class="card">
+  <h2>My activity</h2>
+  <div id="activity-list">loading…</div>
+</section>
+<script>
+(async () => {
+  const list = await AURORA.api("GET", "/api/activity");
+  const e = AURORA.el("activity-list");
+  if (list.length === 0) { e.innerHTML = '<p style="color:var(--gc-dim)">No activity yet.</p>'; return; }
+  e.innerHTML = '<table><thead><tr><th>When</th><th>Action</th><th>Detail</th></tr></thead><tbody>' +
+    list.map(a =>
+      '<tr><td>' + AURORA.fmtTs(a.created_at) + '</td>' +
+      '<td>' + a.action + '</td>' +
+      '<td style="font-family:ui-monospace,monospace;font-size:.78rem;color:var(--gc-dim)">' + (a.detail||"") + '</td></tr>'
+    ).join("") + '</tbody></table>';
+})();
+</script>
+
+</div>
+<script>
+  document.getElementById("as-display").textContent = AURORA.asId;
+</script>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aurora Awards — Submissions</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/account/auth.css" />
+</head>
+<body>
+  <canvas id="aurora-canvas" aria-hidden="true"></canvas>
+  <header class="hero">
+    <nav class="nav">
+      <div class="brand">
+        <img class="brand-mark" src="/assets/awardlogo.png" alt="Aurora Awards" />
+        <div>
+          <strong>Aurora Awards</strong>
+          <span>Design • Marketing • Influence</span>
+        </div>
+      </div>
+      <div class="nav-right" id="authChip" aria-label="Account"></div>
+    </nav>
+    <section class="hero-grid">
+      <div>
+        <p class="eyebrow">Award submissions open</p>
+        <h1>Recognition for websites, campaigns, creators, and digital brands that actually move people.</h1>
+        <p class="lead">Choose one submission path, complete the form, pay the entry fee, and receive review confirmation. Each form is self-contained so applicants can get in, apply, and get out.</p>
+        <div class="hero-actions">
+          <a href="#submit" class="button primary">Start Submission</a>
+          <a href="#awards" class="button ghost">View Awards</a>
+        </div>
+      </div>
+      <aside class="status-card">
+        <div class="status-card-art" aria-hidden="true">
+          <span class="halo halo-1"></span>
+          <span class="halo halo-2"></span>
+          <span class="halo halo-3"></span>
+          <img class="status-card-logo" src="/assets/awardlogo.png" alt="" />
+        </div>
+        <h2><span class="year"></span> Cycle</h2>
+        <p><strong>Spring Review Window</strong></p>
+        <p>Submissions reviewed weekly. Finalists announced monthly. Annual winners selected from monthly finalists.</p>
+        <ul>
+          <li>Verified site/project required</li>
+          <li>Public URL required</li>
+          <li>Payment required to enter review queue</li>
+          <li>No guaranteed award</li>
+        </ul>
+      </aside>
+    </section>
+  </header>
+
+  <main>
+    <section id="awards" class="section">
+      <div class="section-title">
+        <p class="eyebrow">Award map</p>
+        <h2>Awards you can submit for</h2>
+        <p>Keep the award name obvious. The themed title adds identity without confusing the buyer.</p>
+      </div>
+      <div class="award-grid" id="awardGrid"></div>
+    </section>
+
+    <section id="submit" class="section submission-section">
+      <div class="section-title">
+        <p class="eyebrow">Apply</p>
+        <h2>Choose one submission path</h2>
+        <p>Only one panel opens at a time. Each panel is a complete form with its own fee, deliverables, and requirements.</p>
+      </div>
+      <div class="accordion" id="submissionAccordion"></div>
+    </section>
+
+    <section class="section trust-section">
+      <div class="section-title">
+        <p class="eyebrow">How judging works</p>
+        <h2>Transparent enough to be trusted. Selective enough to matter.</h2>
+      </div>
+      <div class="trust-grid">
+        <article><h3>1. Eligibility Check</h3><p>We confirm the URL works, the project is real, the applicant has authority to submit it, and required materials are included.</p></article>
+        <article><h3>2. Rubric Review</h3><p>Entries are scored against category-specific criteria: design, usability, marketing clarity, influence, proof, originality, and impact.</p></article>
+        <article><h3>3. Outcome</h3><p>Each entry is scored against the rubric. Finalists are named at the close of every monthly review window. Honorees and Winners are announced at the year-end ceremony.</p></article>
+        <article><h3>4. Badge Delivery</h3><p>Recognized entries receive an embeddable digital badge. Finalist badges ship the moment finalists are named. Honoree and Winner badges ship together at year-end.</p></article>
+      </div>
+    </section>
+
+    <section class="section recognition-section">
+      <div class="section-title">
+        <p class="eyebrow">Recognition tiers</p>
+        <h2>Three ways your work gets recognized.</h2>
+        <p>Every paid entry is scored. Strong work earns a tier. The badge is yours to embed on your site as soon as it's issued.</p>
+      </div>
+      <div class="trust-grid recognition-grid">
+        <article class="tier-card tier-winner">
+          <p class="tier-eyebrow">Most prestigious</p>
+          <h3>Winner</h3>
+          <p class="tier-meta">One per category · <span class="year"></span> year-end announcement</p>
+          <p>The category's top entry. Receives the physical Aurora Awards crystal trophy, full primary badge artwork, public Winner page, and editorial coverage. Announced digitally at year-end; trophy ships by mail.</p>
+        </article>
+        <article class="tier-card tier-finalist">
+          <p class="tier-eyebrow">Rolling recognition</p>
+          <h3>Finalist</h3>
+          <p class="tier-meta">Top 3-5 per category · Named monthly</p>
+          <p>Named as soon as a monthly review window closes. Finalist badges ship immediately so you can display them while the cycle is still active. Digital badge only.</p>
+        </article>
+        <article class="tier-card tier-honoree">
+          <p class="tier-eyebrow">Year-end honor</p>
+          <h3>Honoree</h3>
+          <p class="tier-meta">Top scoring entries · <span class="year"></span> year-end announcement</p>
+          <p>Recognized for exceeding the entry threshold even without taking the top tier. Honoree badges ship at year-end alongside Winners. Digital badge only.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© <span class="year"></span> Aurora Awards. Replace this footer with your legal business details before launch.</p>
+  </footer>
+
+  <template id="awardCardTemplate">
+    <article class="award-card">
+      <div class="badge-slot" title="Upload your finished PNG/JPEG badge artwork here.">
+        <span>Badge Image Slot</span>
+      </div>
+      <p class="award-year"><span class="year"></span> Cycle</p>
+      <h3></h3>
+      <p class="award-tier"></p>
+      <p class="award-description"></p>
+      <small class="award-meta"></small>
+    </article>
+  </template>
+
+  <template id="accordionTemplate">
+    <article class="panel">
+      <button class="panel-header" type="button">
+        <span>
+          <strong class="panel-title"></strong>
+          <small class="panel-subtitle"></small>
+        </span>
+        <em class="panel-price"></em>
+      </button>
+      <div class="panel-body">
+        <div class="form-intro"></div>
+        <form class="submission-form">
+          <input type="hidden" name="submission_type" />
+          <div class="gate-banner">
+            <strong>Sign in to submit.</strong> Aurora Gracewood accounts are free. Your details below will pre-fill from your profile, and your submission attaches to your account so you can track its status.
+            <br/><button type="button" class="gate-signin">Sign in or create a free account</button>
+          </div>
+          <div class="form-grid"></div>
+          <div class="requirements"></div>
+          <label class="checkbox-line"><input type="checkbox" required /> I understand this is a paid review submission and does not guarantee an award.</label>
+          <label class="checkbox-line"><input type="checkbox" required /> I confirm I have authority to submit this website, campaign, brand, or creator profile.</label>
+          <div class="payment-box">
+            <div>
+              <strong>Payment step</strong>
+              <p>This starter uses a payment placeholder. Connect Stripe, PayPal, Square, or your preferred checkout link.</p>
+            </div>
+            <button class="button primary submit-btn" type="submit">Submit &amp; Continue to Payment</button>
+          </div>
+        </form>
+      </div>
+    </article>
+  </template>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="bg.js"></script>
+  <script src="/account/auth.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Messages · Aurora Gracewood</title>
+<link rel="stylesheet" href="/account/realm.css" />
+<script src="/account/realm.js"></script>
+
+</head>
+<body>
+<div class="layout">
+  <div class="realm-banner admin">
+    <span>ADMIN REALM · Messages</span>
+    <span class="as-info">acting as user_id=<span id="as-display"></span></span>
+  </div>
+  <nav class="nav">
+    <a data-realm-link href="/admin/admin">Profile</a>
+<a data-realm-link href="/admin/profile-edit">Edit profile</a>
+<a data-realm-link href="/admin/notifications">Notifications</a>
+<a data-realm-link href="/admin/activity">Activity (mine)</a>
+<a data-realm-link href="/admin/messages">Messages</a>
+<a data-realm-link href="/admin/clients">Clients</a>
+  </nav>
+  
+<section class="card">
+  <h2>Send a message</h2>
+  <div class="row"><span class="label">To (user_id)</span><input id="to_user" type="number" placeholder="1 = superuser, 3 = client" /><span></span></div>
+  <div class="row"><span class="label">Subject</span><input id="subject" /><span></span></div>
+  <div class="row"><span class="label">Body</span><textarea id="body"></textarea><span></span></div>
+  <div style="margin-top:14px"><button class="btn" id="send">Send</button></div>
+  <div class="status" id="send-status"></div>
+</section>
+<section class="card">
+  <h2>Conversations</h2>
+  <div id="messages-list">loading…</div>
+</section>
+<script>
+async function loadMessages() {
+  const list = await AURORA.api("GET", "/api/messages");
+  const e = AURORA.el("messages-list");
+  if (list.length === 0) { e.innerHTML = '<p style="color:var(--gc-dim)">No messages yet.</p>'; return; }
+  e.innerHTML = list.map(m => {
+    const inbound = m.to_user == AURORA.asId;
+    return '<div class="msg-row"><div>' +
+      '<div class="msg-from">' + (inbound ? '↓ FROM' : '↑ TO') + ' <span class="role-tag ' + (inbound ? m.from_role : m.to_role) + '">' + (inbound ? m.from_role : m.to_role) + '</span> ' + (inbound ? m.from_name : m.to_name) + ' (#' + (inbound ? m.from_user : m.to_user) + ')</div>' +
+      '<div class="msg-subject">' + (m.subject || "(no subject)") + '</div>' +
+      '<div class="msg-body">' + m.body + '</div>' +
+      '</div><div class="msg-meta">' + AURORA.fmtTs(m.created_at) + (m.read_at ? '<br/>read' : (inbound ? '<br/><span class="msg-unread">UNREAD</span>' : '')) + '</div></div>';
+  }).join("");
+}
+AURORA.el("send").onclick = async () => {
+  try {
+    await AURORA.api("POST", "/api/messages", {
+      to_user: parseInt(AURORA.el("to_user").value),
+      subject: AURORA.el("subject").value,
+      body: AURORA.el("body").value,
+    });
+    AURORA.el("subject").value = "";
+    AURORA.el("body").value = "";
+    AURORA.setStatus("send-status", "Sent.", true);
+    loadMessages();
+  } catch (e) { AURORA.setStatus("send-status", e.message, false); }
+};
+loadMessages();
+</script>
+
+</div>
+<script>
+  document.getElementById("as-display").textContent = AURORA.asId;
+</script>
+</body>
+</html>

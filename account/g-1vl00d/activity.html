@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Activity / Audit Log · Aurora Gracewood</title>
+<link rel="stylesheet" href="/account/realm.css" />
+<script src="/account/realm.js"></script>
+
+</head>
+<body>
+<div class="layout">
+  <div class="realm-banner superuser">
+    <span>SUPERUSER REALM · Activity / Audit Log</span>
+    <span class="as-info">acting as user_id=<span id="as-display"></span></span>
+  </div>
+  <nav class="nav">
+    <a data-realm-link href="/g-1vl00d/superuser">Profile</a>
+<a data-realm-link href="/g-1vl00d/profile-edit">Edit profile</a>
+<a data-realm-link href="/g-1vl00d/settings">Settings</a>
+<a data-realm-link href="/g-1vl00d/notifications">Notifications</a>
+<a data-realm-link href="/g-1vl00d/sessions">Sessions</a>
+<a data-realm-link href="/g-1vl00d/activity">Activity</a>
+<a data-realm-link href="/g-1vl00d/messages">Messages</a>
+<a data-realm-link href="/g-1vl00d/manage-users">Manage users</a>
+  </nav>
+  
+<section class="card">
+  <h2>Recent activity <span class="meta">— audit trail</span></h2>
+  <div id="activity-list">loading…</div>
+</section>
+<script>
+(async () => {
+  const list = await AURORA.api("GET", "/api/activity");
+  const e = AURORA.el("activity-list");
+  if (list.length === 0) { e.innerHTML = '<p style="color:var(--gc-dim)">No activity yet.</p>'; return; }
+  e.innerHTML = '<table><thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Detail</th></tr></thead><tbody>' +
+    list.map(a =>
+      '<tr><td>' + AURORA.fmtTs(a.created_at) + '</td>' +
+      '<td><span class="role-tag ' + (a.actor_role||"") + '">' + (a.actor_role||"—") + '</span> #' + (a.user_id||"") + '</td>' +
+      '<td>' + a.action + '</td>' +
+      '<td style="font-family:ui-monospace,monospace;font-size:.78rem;color:var(--gc-dim)">' + (a.detail||"") + '</td></tr>'
+    ).join("") + '</tbody></table>';
+})();
+</script>
+
+</div>
+<script>
+  document.getElementById("as-display").textContent = AURORA.asId;
+</script>
+</body>
+</html>

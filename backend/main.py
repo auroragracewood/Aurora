@@ -846,8 +846,14 @@ async def api_forgot_username(request: Request):
 
 # ---------- END AUTH ROUTES ----------
 
-@app.get("/", response_class=HTMLResponse)
-def home(): return (SITE_DIR / "index.html").read_text(encoding="utf-8")
+@app.get("/")
+def home():
+    """Apex of rewards.aurora-gracewood.com: redirect to the awards landing.
+    The old `site/index.html` signup-card splash is gone (was leaking sign-in UI onto a
+    public page via GitHub Pages mirror at aurora-gracewood.com/site/). Auth flow is now
+    initiated via /awards/ (or directly via the AGAuth modal on any page that has it)."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse("/awards/", status_code=302)
 
 @app.get("/g-1vl00d/{page}", response_class=HTMLResponse)
 def superuser_realm(page: str):

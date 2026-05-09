@@ -37,7 +37,6 @@ DEPLOY_FILES = [
     "account/client/notifications.html",
     "account/client/activity.html",
     "account/client/messages.html",
-    "site/index.html",
     "start-aurora.bat",
     # Badge artwork assets (served via /awards/asset/* and /awards/badge-asset/*)
     "awards/badDB/assets/mark.svg",

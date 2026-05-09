@@ -16,10 +16,10 @@
 
 (function () {
   const STORAGE_KEY = 'ag_session_v1';
-  // The FastAPI backend (auth source of truth) lives at rewards.aurora-gracewood.com.
+  // The FastAPI backend (auth source of truth) lives at aurora-gracewood.com.
   // From any apex page (or the awards page on either host) we can fetch /api/me there
   // to learn whether the user has a real session cookie and what their role + slug are.
-  const BACKEND_ORIGIN = 'https://rewards.aurora-gracewood.com';
+  const BACKEND_ORIGIN = 'https://aurora-gracewood.com';
 
   function readSession() {
     try {
@@ -63,7 +63,7 @@
   }
 
   // Fetch the real backend session on page-load. If a session cookie exists on the
-  // rewards.aurora-gracewood.com domain, this fills in role + slug + email so the chip
+  // aurora-gracewood.com domain, this fills in role + slug + email so the chip
   // and "My Profile" link reflect reality. Cross-origin from apex requires CORS on the
   // backend — currently no CORS is configured, so this only works when auth.js is
   // loaded from the rewards subdomain. From apex we silently fall back to localStorage.

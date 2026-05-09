@@ -428,7 +428,7 @@ def next_user_id(role):
 # AUTH — password hashing, sessions, email sending, signup/verify/signin
 # =====================================================================
 
-PUBLIC_BASE_URL = "https://rewards.aurora-gracewood.com"
+PUBLIC_BASE_URL = "https://aurora-gracewood.com"
 EMAIL_FROM = "Aurora Gracewood <hello@aurora-gracewood.com>"
 RESEND_KEY_FILE = ROOT / ".resend_key"
 SESSION_COOKIE = "ag_session"
@@ -848,7 +848,7 @@ async def api_forgot_username(request: Request):
 
 @app.get("/")
 def home():
-    """Apex of rewards.aurora-gracewood.com: redirect to the awards landing.
+    """Apex of aurora-gracewood.com: redirect to the awards landing.
     The old `site/index.html` signup-card splash is gone (was leaking sign-in UI onto a
     public page via GitHub Pages mirror at aurora-gracewood.com/site/). Auth flow is now
     initiated via /awards/ (or directly via the AGAuth modal on any page that has it)."""

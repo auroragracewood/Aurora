@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>All Submissions · Aurora Gracewood Superuser</title>
+<link rel="stylesheet" href="/account/realm.css" />
+<script src="/account/realm.js"></script>
+<style>
+  .filter-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+  .filter-bar select, .filter-bar input {
+    background: rgba(0,0,0,.30); border: 1px solid rgba(255,255,255,.16);
+    color: #f6f7fb; padding: 6px 10px; border-radius: 6px; font: inherit;
+  }
+  .sub-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 1.2fr) minmax(160px, 1.4fr) minmax(120px,1fr) minmax(140px, 1fr) minmax(120px,1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    font-size: .88rem;
+  }
+  .sub-row.head {
+    font-weight: 700;
+    color: rgba(246,247,251,.7);
+    font-size: .76rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border-bottom: 1px solid rgba(255,255,255,.18);
+  }
+  .sub-row select {
+    background: rgba(0,0,0,.30); border: 1px solid rgba(255,255,255,.16);
+    color: #f6f7fb; padding: 4px 8px; border-radius: 6px; font: inherit;
+    font-size: .82rem;
+  }
+  .sub-row .who { display: flex; flex-direction: column; }
+  .sub-row .who .name { font-weight: 600; }
+  .sub-row .who .email { font-size: .76rem; color: rgba(246,247,251,.55); }
+  .sub-row .when { font-size: .8rem; color: rgba(246,247,251,.65); }
+  .sub-actions { display: flex; gap: 6px; }
+  .sub-actions button {
+    background: transparent; border: 1px solid rgba(255,255,255,.18);
+    color: rgba(246,247,251,.85); padding: 4px 10px; border-radius: 6px;
+    font-size: .76rem; cursor: pointer;
+  }
+  .sub-actions button:hover { background: rgba(255,255,255,.08); }
+  .sub-actions button.save {
+    background: linear-gradient(135deg, #4a5fc1, #f4cfd9); color: #08101b; border: 0; font-weight: 700;
+  }
+  .sub-payload {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    font-family: ui-monospace, monospace;
+    font-size: .76rem;
+    background: rgba(0,0,0,.30);
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: rgba(246,247,251,.7);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 240px; overflow: auto;
+    display: none;
+  }
+  .sub-row.expanded .sub-payload { display: block; }
+  .empty-state { padding: 48px 24px; text-align: center; color: rgba(246,247,251,.6); }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="realm-banner superuser">
+    <span>SUPERUSER REALM · All Submissions</span>
+    <span class="as-info">acting as user_id=<span id="as-display"></span></span>
+  </div>
+  <nav class="nav">
+    <a data-realm-link href="/g-1vl00d/superuser">Profile</a>
+    <a data-realm-link href="/g-1vl00d/profile-edit">Edit profile</a>
+    <a data-realm-link href="/g-1vl00d/submissions">Submissions</a>
+    <a data-realm-link href="/g-1vl00d/manage-users">Manage users</a>
+    <a data-realm-link href="/g-1vl00d/notifications">Notifications</a>
+    <a data-realm-link href="/g-1vl00d/activity">Activity</a>
+    <a data-realm-link href="/g-1vl00d/messages">Messages</a>
+    <a data-realm-link href="/g-1vl00d/sessions">Sessions</a>
+    <a data-realm-link href="/g-1vl00d/settings">Settings</a>
+  </nav>
+
+<section class="card">
+  <h2>All Submissions <span class="meta">— full review controls</span></h2>
+  <div class="filter-bar">
+    <label>Status:
+      <select id="filter-status">
+        <option value="">All</option>
+        <option value="pending_payment">Pending Payment</option>
+        <option value="pending_review">Pending Review</option>
+        <option value="reviewing">Under Review</option>
+        <option value="finalist">Finalist</option>
+        <option value="honoree">Honoree</option>
+        <option value="winner">Winner</option>
+        <option value="rejected">Not Selected</option>
+        <option value="withdrawn">Withdrawn</option>
+      </select>
+    </label>
+    <label>Search:
+      <input type="text" id="filter-search" placeholder="email, name, type…" />
+    </label>
+    <span id="count-display" style="margin-left:auto;color:var(--gc-dim);font-size:.84rem"></span>
+  </div>
+  <div id="sub-table">loading…</div>
+</section>
+
+<script>
+function escHTML(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+const STATUSES = ["pending_payment","pending_review","reviewing","finalist","honoree","winner","rejected","withdrawn"];
+function statusLabel(s) {
+  return ({
+    pending_payment: "Pending Payment", pending_review: "Pending Review",
+    reviewing: "Under Review", finalist: "Finalist", honoree: "Honoree",
+    winner: "Winner", rejected: "Not Selected", withdrawn: "Withdrawn"
+  })[s] || s;
+}
+
+let allSubmissions = [];
+
+async function updateStatus(sid, newStatus, btn) {
+  const notes = prompt("Optional review notes (visible to client):", "") || null;
+  try {
+    btn.disabled = true; btn.textContent = "saving…";
+    await AURORA.api("PUT", "/api/submissions/" + sid + "/status", { status: newStatus, notes });
+    btn.textContent = "saved ✓";
+    setTimeout(() => loadAndRender(), 700);
+  } catch (e) {
+    alert("Save failed: " + e.message);
+    btn.disabled = false; btn.textContent = "Save";
+  }
+}
+
+function applyFilter() {
+  const status = document.getElementById("filter-status").value;
+  const q = document.getElementById("filter-search").value.toLowerCase().trim();
+  let filtered = allSubmissions;
+  if (status) filtered = filtered.filter(s => s.status === status);
+  if (q) filtered = filtered.filter(s =>
+    (s.email||"").toLowerCase().includes(q) ||
+    (s.display_name||"").toLowerCase().includes(q) ||
+    (s.username||"").toLowerCase().includes(q) ||
+    (s.submission_type||"").toLowerCase().includes(q)
+  );
+  document.getElementById("count-display").textContent =
+    filtered.length + " of " + allSubmissions.length + " submission" + (allSubmissions.length === 1 ? "" : "s");
+  renderTable(filtered);
+}
+
+function renderTable(list) {
+  const wrap = AURORA.el("sub-table");
+  if (!list.length) {
+    wrap.innerHTML = '<div class="empty-state"><p>No submissions match these filters.</p></div>';
+    return;
+  }
+  wrap.innerHTML =
+    '<div class="sub-row head">' +
+      '<div>Type</div><div>Submitted by</div><div>Submitted</div><div>Status</div><div>Reviewed</div><div>Actions</div>' +
+    '</div>' +
+    list.map(s => {
+      const payloadStr = JSON.stringify(s.payload, null, 2);
+      const optsHtml = STATUSES.map(st =>
+        '<option value="' + st + '"' + (st === s.status ? ' selected' : '') + '>' + statusLabel(st) + '</option>'
+      ).join("");
+      return (
+        '<div class="sub-row" data-sid="' + s.id + '">' +
+          '<div>' + escHTML(s.submission_type) + '</div>' +
+          '<div class="who">' +
+            '<span class="name">' + escHTML(s.display_name || s.username || ('user#' + s.user_id)) + '</span>' +
+            '<span class="email">' + escHTML(s.email || '') + ' · ' + escHTML(s.role || '') + '</span>' +
+          '</div>' +
+          '<div class="when">' + AURORA.fmtTs(s.submitted_at) + '</div>' +
+          '<div><select data-status-select="' + s.id + '">' + optsHtml + '</select></div>' +
+          '<div class="when">' + (s.reviewed_at ? AURORA.fmtTs(s.reviewed_at) : '—') + '</div>' +
+          '<div class="sub-actions">' +
+            '<button type="button" data-toggle="' + s.id + '">Details</button>' +
+            '<button type="button" class="save" data-save="' + s.id + '">Save</button>' +
+          '</div>' +
+          '<pre class="sub-payload">' + escHTML(payloadStr) + (s.review_notes ? '\n\n# review notes:\n' + escHTML(s.review_notes) : '') + '</pre>' +
+        '</div>'
+      );
+    }).join("");
+
+  wrap.querySelectorAll("[data-toggle]").forEach(b => b.addEventListener("click", () => {
+    b.closest(".sub-row").classList.toggle("expanded");
+  }));
+  wrap.querySelectorAll("[data-save]").forEach(b => b.addEventListener("click", () => {
+    const sid = b.getAttribute("data-save");
+    const sel = wrap.querySelector('[data-status-select="' + sid + '"]');
+    updateStatus(sid, sel.value, b);
+  }));
+}
+
+async function loadAndRender() {
+  AURORA.el("sub-table").innerHTML = "loading…";
+  allSubmissions = await AURORA.api("GET", "/api/submissions");
+  applyFilter();
+}
+
+document.getElementById("filter-status").addEventListener("change", applyFilter);
+document.getElementById("filter-search").addEventListener("input", applyFilter);
+loadAndRender();
+</script>
+
+</div>
+<script>document.getElementById("as-display").textContent = AURORA.asId;</script>
+</body>
+</html>

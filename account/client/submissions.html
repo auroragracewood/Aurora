@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Submissions · Aurora Gracewood</title>
+<link rel="stylesheet" href="/account/realm.css" />
+<script src="/account/realm.js"></script>
+<style>
+  .sub-list { display: flex; flex-direction: column; gap: 14px; }
+  .sub-item {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 18px;
+    align-items: start;
+  }
+  .sub-type { font-weight: 700; font-size: 1.02rem; }
+  .sub-meta { color: rgba(246,247,251,.6); font-size: .82rem; }
+  .sub-status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: .76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .sub-status.pending_payment { background: rgba(180,180,180,.15); color: #b9bdc4; border: 1px solid rgba(180,180,180,.25); }
+  .sub-status.pending_review { background: rgba(74,95,193,.18); color: #9aa9e8; border: 1px solid rgba(74,95,193,.4); }
+  .sub-status.reviewing { background: rgba(255,184,77,.15); color: #ffc97a; border: 1px solid rgba(255,184,77,.35); }
+  .sub-status.finalist { background: rgba(110,206,141,.18); color: #a6e8be; border: 1px solid rgba(110,206,141,.4); }
+  .sub-status.honoree { background: rgba(244,207,217,.18); color: #f4cfd9; border: 1px solid rgba(244,207,217,.4); }
+  .sub-status.winner { background: linear-gradient(135deg, #f4cfd9, #4a5fc1); color: #08101b; }
+  .sub-status.rejected { background: rgba(255,143,216,.10); color: #ff8fd8; border: 1px solid rgba(255,143,216,.3); }
+  .sub-status.withdrawn { background: rgba(180,180,180,.10); color: #888; border: 1px solid rgba(180,180,180,.2); text-decoration: line-through; }
+  .sub-payload {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    font-family: ui-monospace, monospace;
+    font-size: .78rem;
+    background: rgba(0,0,0,.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: rgba(246,247,251,.7);
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    display: none;
+  }
+  .sub-item.expanded .sub-payload { display: block; }
+  .sub-toggle {
+    background: transparent; border: 1px solid rgba(255,255,255,.18);
+    color: rgba(246,247,251,.78); padding: 4px 10px; border-radius: 6px;
+    font-size: .76rem; cursor: pointer;
+  }
+  .sub-toggle:hover { background: rgba(255,255,255,.06); }
+  .withdraw-btn {
+    background: transparent; border: 1px solid rgba(255,143,216,.4);
+    color: #ff8fd8; padding: 4px 10px; border-radius: 6px;
+    font-size: .76rem; cursor: pointer; margin-left: 6px;
+  }
+  .withdraw-btn:hover { background: rgba(255,143,216,.10); }
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: rgba(246,247,251,.6);
+  }
+  .empty-state a { color: #f4cfd9; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="realm-banner client">
+    <span>CLIENT REALM · My Submissions</span>
+    <span class="as-info">acting as user_id=<span id="as-display"></span></span>
+  </div>
+  <nav class="nav">
+    <a data-realm-link href="/client/client">Profile</a>
+    <a data-realm-link href="/client/profile-edit">Edit profile</a>
+    <a data-realm-link href="/client/submissions">Submissions</a>
+    <a data-realm-link href="/client/notifications">Notifications</a>
+    <a data-realm-link href="/client/activity">Activity</a>
+    <a data-realm-link href="/client/messages">Messages</a>
+  </nav>
+
+<section class="card">
+  <h2>My Submissions <span class="meta">— entries you've submitted to award cycles</span></h2>
+  <div id="sub-list">loading…</div>
+  <p style="margin-top:18px;font-size:.86rem;color:var(--gc-dim)">
+    Submit a new entry at <a href="/awards/#submit" style="color:#f4cfd9">/awards/#submit</a>.
+  </p>
+</section>
+
+<script>
+function escHTML(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+function statusLabel(s) {
+  return ({
+    pending_payment: "Pending Payment",
+    pending_review:  "Pending Review",
+    reviewing:       "Under Review",
+    finalist:        "Finalist",
+    honoree:         "Honoree",
+    winner:          "Winner",
+    rejected:        "Not Selected",
+    withdrawn:       "Withdrawn",
+  })[s] || s;
+}
+
+async function withdraw(sid) {
+  if (!confirm("Withdraw this submission? You can only withdraw before review begins.")) return;
+  try {
+    await AURORA.api("PUT", "/api/submissions/" + sid + "/status", { status: "withdrawn" });
+    render();
+  } catch (e) {
+    alert("Could not withdraw: " + e.message);
+  }
+}
+
+async function render() {
+  const list = await AURORA.api("GET", "/api/me/submissions");
+  const wrap = AURORA.el("sub-list");
+  if (!list.length) {
+    wrap.innerHTML = '<div class="empty-state">' +
+      '<p>No submissions yet.</p>' +
+      '<p><a href="/awards/#submit">Browse award categories →</a></p>' +
+      '</div>';
+    return;
+  }
+  wrap.innerHTML = '<div class="sub-list">' + list.map(s => {
+    const canWithdraw = (s.status === "pending_payment" || s.status === "pending_review");
+    const payloadStr = JSON.stringify(s.payload, null, 2);
+    return (
+      '<div class="sub-item" data-sid="' + s.id + '">' +
+        '<div>' +
+          '<div class="sub-type">' + escHTML(s.submission_type) + '</div>' +
+          '<div class="sub-meta">' +
+            'Submitted ' + AURORA.fmtTs(s.submitted_at) +
+            (s.reviewed_at ? ' · Reviewed ' + AURORA.fmtTs(s.reviewed_at) : '') +
+            (s.review_notes ? ' · <em>' + escHTML(s.review_notes) + '</em>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div style="text-align:right">' +
+          '<span class="sub-status ' + s.status + '">' + statusLabel(s.status) + '</span><br>' +
+          '<button class="sub-toggle" type="button" data-toggle="' + s.id + '" style="margin-top:8px">Details ▾</button>' +
+          (canWithdraw ? '<button class="withdraw-btn" type="button" data-withdraw="' + s.id + '">Withdraw</button>' : '') +
+        '</div>' +
+        '<pre class="sub-payload">' + escHTML(payloadStr) + '</pre>' +
+      '</div>'
+    );
+  }).join("") + '</div>';
+
+  wrap.querySelectorAll("[data-toggle]").forEach(b => b.addEventListener("click", () => {
+    const item = b.closest(".sub-item");
+    item.classList.toggle("expanded");
+    b.textContent = item.classList.contains("expanded") ? "Details ▴" : "Details ▾";
+  }));
+  wrap.querySelectorAll("[data-withdraw]").forEach(b => b.addEventListener("click", () => {
+    withdraw(b.getAttribute("data-withdraw"));
+  }));
+}
+render();
+</script>
+
+</div>
+<script>document.getElementById("as-display").textContent = AURORA.asId;</script>
+</body>
+</html>

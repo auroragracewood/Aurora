@@ -107,25 +107,40 @@ AURORA_CONFIG.submissionTypes.forEach((type, index) => {
 
   /* Submit handler — gated through AGAuth.requireAuth. If logged in, runs
      immediately. If logged out, opens the auth modal; on success, re-runs
-     and submits without losing form state (the closure captures form). */
+     and submits without losing form state (the closure captures form).
+     Form fields PERSIST through the auth flow because the modal is appended
+     to body, never reaches into this form, and FormData is read inside
+     doSubmit() at submit-moment, not at registration-moment. */
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    const doSubmit = () => {
+    const doSubmit = async () => {
       const formData = new FormData(form);
       const payload = Object.fromEntries(formData.entries());
-      const user = AGAuth.getUser();
-      if (user) {
-        /* Attach enough profile context that the backend can resolve to
-           the user record without a separate lookup. Underscore-prefixed
-           keys to keep them out of the visible form data namespace. */
-        payload._account_email = user.email;
-        payload._account_name = user.name;
-        payload._account_role = user.role || 'client';
-        payload._public_slug = user.public_slug || '';
-        payload._submitted_at = new Date().toISOString();
+      payload._submitted_at = new Date().toISOString();
+      const submitBtn = form.querySelector('.submit-btn');
+      const origLabel = submitBtn ? submitBtn.textContent : '';
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting…'; }
+      try {
+        const r = await fetch('/api/submissions', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.detail || ('HTTP ' + r.status));
+        }
+        const data = await r.json();
+        alert('Submission received. Track it under Account → Submissions.');
+        form.reset();
+        applyAuthState(form);  /* re-prefill name/email from /api/me after reset */
+      } catch (e) {
+        alert('Could not submit: ' + (e.message || e));
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origLabel; }
+        return;
       }
-      localStorage.setItem(`aurora_submission_${type.id}_${Date.now()}`, JSON.stringify(payload, null, 2));
-      alert('Submission saved locally for day-one testing. Replace this with your live form endpoint and payment checkout.');
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origLabel; }
     };
     if (window.AGAuth && AGAuth.isLoggedIn && AGAuth.isLoggedIn()) {
       doSubmit();

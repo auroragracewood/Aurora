@@ -49,17 +49,25 @@
     renderChip();
   }
 
-  // Build the per-role URL that "My Profile" should point at, on the rewards backend.
+  // Build the per-role URL that "My Profile" should point at. The role-folder pages are
+  // rendered server-side and read /api/me at runtime, so they show whoever's currently
+  // signed in — that's why we link to the role-archetype URL (e.g. /client/client) rather
+  // than to /client/{username}.
   function profileUrl(user) {
     const role = user && user.role;
     const path = ({
       superuser: '/g-1vl00d/superuser',
       admin:     '/admin/admin',
       client:    '/client/client',
-    })[role] || '/awards/';
-    // Always absolute to the rewards subdomain so apex pages don't try to serve
-    // /account/ as a static path on the wrong host.
+    })[role] || null;
+    if (!path) return BACKEND_ORIGIN + '/account/';
     return BACKEND_ORIGIN + path;
+  }
+  // Build the per-role URL for "My Submissions". Same role-folder pattern as profileUrl.
+  function submissionsUrl(user) {
+    const role = user && user.role;
+    const folder = ({ superuser: 'g-1vl00d', admin: 'admin', client: 'client' })[role] || 'client';
+    return BACKEND_ORIGIN + '/' + folder + '/submissions';
   }
 
   // Fetch the real backend session on page-load. If a session cookie exists on the
@@ -118,7 +126,8 @@
           </button>
           <div class="ag-chip-menu" role="menu">
             <a role="menuitem" href="${profileUrl(user)}">My Profile</a>
-            <a role="menuitem" href="${BACKEND_ORIGIN}/awards/#submit">My Submissions</a>
+            <a role="menuitem" href="${submissionsUrl(user)}">My Submissions</a>
+            <a role="menuitem" href="${BACKEND_ORIGIN}/awards/#submit">Submit New Entry</a>
             <a role="menuitem" href="#" data-action="signout">Sign Out</a>
           </div>
         </div>`;
@@ -207,20 +216,29 @@
   function setMode(mode) {
     const isSignup = mode === 'signup';
     modalEl.querySelector('.ag-modal-title').textContent = isSignup
-      ? 'Welcome — set up your free Aurora Gracewood account'
+      ? 'Sign up — free Aurora Gracewood account'
       : 'Welcome back';
     modalEl.querySelector('.ag-modal-sub').textContent = isSignup
-      ? "Free. One account works across everything I make."
+      ? "Enter your email and I'll send a setup link. Choose a username and password from there."
       : 'Sign in to continue where you left off.';
-    modalEl.querySelector('.ag-submit').textContent = isSignup ? 'Create Free Account' : 'Sign In';
+    modalEl.querySelector('.ag-submit').textContent = isSignup ? 'Send Setup Link' : 'Sign In';
     modalEl.querySelectorAll('.ag-modal-tab').forEach((t) => {
       t.classList.toggle('is-active', t.dataset.mode === mode);
     });
-    modalEl.querySelector('.ag-field-name').style.display = isSignup ? '' : 'none';
+    /* Real signup (backend sends verify link) only needs an email; the user
+       picks a name + password on the verify page. Hide name + password on signup. */
+    modalEl.querySelector('.ag-field-name').style.display = 'none';
+    const pwField = modalEl.querySelector('input[name="password"]').closest('.ag-field');
+    if (pwField) pwField.style.display = isSignup ? 'none' : '';
+    modalEl.querySelector('input[name="password"]').required = !isSignup;
     modalEl.querySelector('.ag-field-share').style.display = isSignup ? '' : 'none';
-    modalEl.querySelector('input[name="name"]').required = isSignup;
+    modalEl.querySelector('input[name="name"]').required = false;
     modalEl.querySelector('input[name="password"]').setAttribute('autocomplete', isSignup ? 'new-password' : 'current-password');
     modalEl.querySelector('.ag-modal-error').textContent = '';
+    /* Reset form visibility — signup-success hides the form to show "check your email";
+       on next open, the form must be visible again. */
+    const formEl = modalEl.querySelector('.ag-modal-form');
+    if (formEl) formEl.style.display = '';
     modalEl.dataset.mode = mode;
   }
   function showModal(opts) {
@@ -239,31 +257,63 @@
     modalEl.setAttribute('aria-hidden', 'true');
     modalOnSuccess = null;
   }
-  function handleSubmit(form) {
+  async function handleSubmit(form) {
     const data = new FormData(form);
     const mode = modalEl.dataset.mode;
     const email = (data.get('email') || '').toString().trim();
     const password = (data.get('password') || '').toString();
-    const name = (data.get('name') || '').toString().trim();
     const errEl = modalEl.querySelector('.ag-modal-error');
     errEl.textContent = '';
-    if (!email || !password) { errEl.textContent = 'Email and password are required.'; return; }
-    if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
-    if (mode === 'signup' && !name) { errEl.textContent = 'Display name is required.'; return; }
-    /* Stub auth: accepts any well-formed input. Persists user record locally.
-       Pass-2 will replace this with a real fetch() to the Aurora-Gracewood
-       auth API. The public surface (signOut, getUser, etc.) does not change. */
-    const marketingShare = !!data.get('marketing_share');
-    const user = {
-      name: name || email.split('@')[0],
-      email: email,
-      marketing_share: marketingShare,
-      created_at: new Date().toISOString()
-    };
-    writeSession(user);
-    closeModal();
-    renderChip();
-    if (modalOnSuccess) { try { modalOnSuccess(user); } catch (e) { /* swallow */ } }
+    if (!email) { errEl.textContent = 'Email is required.'; return; }
+    if (mode === 'signin' && !password) { errEl.textContent = 'Password is required to sign in.'; return; }
+
+    const submitBtn = modalEl.querySelector('.ag-submit');
+    const origLabel = submitBtn.textContent;
+    submitBtn.disabled = true; submitBtn.textContent = 'Working…';
+
+    try {
+      if (mode === 'signup') {
+        /* Real signup: backend emails a verification link. The user clicks it,
+           sets username + password on the verify page, and lands signed-in.
+           From here, just confirm the email was sent. */
+        const r = await fetch(BACKEND_ORIGIN + '/api/signup', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.detail || ('HTTP ' + r.status));
+        }
+        modalEl.querySelector('.ag-modal-title').textContent = 'Check your email';
+        modalEl.querySelector('.ag-modal-sub').textContent =
+          'I just emailed ' + email + ' a setup link. Click it within 24 hours to choose a username and password.';
+        form.style.display = 'none';
+      } else {
+        /* Real signin: POST email + password, backend sets ag_session cookie.
+           Then sync from /api/me to populate role/username/slug for chip menu. */
+        const r = await fetch(BACKEND_ORIGIN + '/api/signin', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, password: password })
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.detail || ('HTTP ' + r.status));
+        }
+        await syncFromBackend();
+        const user = getUser();
+        closeModal();
+        renderChip();
+        if (modalOnSuccess) { try { modalOnSuccess(user); } catch (e) {} }
+      }
+    } catch (e) {
+      errEl.textContent = e.message || 'Something went wrong. Try again.';
+    } finally {
+      submitBtn.disabled = false; submitBtn.textContent = origLabel;
+    }
   }
 
   function requireAuth(action, opts) {

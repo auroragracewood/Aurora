@@ -307,6 +307,26 @@ def migrate_db():
             )
             WHERE destination_url IS NULL OR destination_url = ''
         """)
+
+        # submissions — paid award entries from clients. Schema deliberately stores the full
+        # form payload as JSON so we can iterate on submission_types in config without ALTERing.
+        # status is the lifecycle: pending_payment → pending_review → reviewing →
+        # finalist | honoree | winner | rejected | withdrawn. reviewed_at + reviewed_by stamp
+        # only when an admin/superuser changes status; the initial transition from pending_review
+        # is "claim" and doesn't change status, just attribution.
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS submissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                submission_type TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending_review',
+                submitted_at INTEGER NOT NULL,
+                reviewed_at INTEGER,
+                reviewed_by INTEGER,
+                review_notes TEXT
+            )
+        """)
         c.commit()
 migrate_db()
 
@@ -1004,6 +1024,104 @@ async def admin_set_user_badge_visibility(uid: int, badge_slug: str, request: Re
     log_activity(actor["id"], "admin_badge_visibility_set",
                  f"uid={uid} {badge_slug}={'hidden' if hidden else 'visible'}")
     return {"ok": True}
+
+# ============== SUBMISSIONS ==============
+# Lifecycle: client posts a submission via /api/submissions; it lands as 'pending_review'.
+# Admin/superuser changes status to one of: reviewing, finalist, honoree, winner, rejected.
+# Client may withdraw their own pending submission (status -> 'withdrawn').
+
+SUBMISSION_STATUSES = {"pending_payment", "pending_review", "reviewing",
+                        "finalist", "honoree", "winner", "rejected", "withdrawn"}
+
+@app.post("/api/submissions")
+async def create_submission(request: Request):
+    u = get_actor(request)
+    if not u: raise HTTPException(401, "Sign in to submit")
+    data = await request.json()
+    submission_type = (data.get("submission_type") or "").strip()
+    if not submission_type:
+        raise HTTPException(400, "submission_type required")
+    now = int(time.time())
+    with db() as c:
+        cur = c.execute(
+            """INSERT INTO submissions (user_id, submission_type, payload_json, status, submitted_at)
+               VALUES (?, ?, ?, 'pending_review', ?)""",
+            (u["id"], submission_type, json.dumps(data), now))
+        sub_id = cur.lastrowid
+        c.commit()
+    log_activity(u["id"], "submission_created", f"id={sub_id} type={submission_type}")
+    return {"ok": True, "id": sub_id, "status": "pending_review"}
+
+@app.get("/api/me/submissions")
+def get_my_submissions(request: Request):
+    u = get_actor(request)
+    if not u: raise HTTPException(401)
+    with db() as c:
+        rows = c.execute(
+            """SELECT id, submission_type, status, submitted_at, reviewed_at, review_notes, payload_json
+               FROM submissions WHERE user_id = ? ORDER BY submitted_at DESC""",
+            (u["id"],)).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        try: d["payload"] = json.loads(d.pop("payload_json"))
+        except Exception: d["payload"] = {}
+        out.append(d)
+    return out
+
+@app.get("/api/submissions")
+def get_all_submissions(request: Request):
+    actor = get_actor(request)
+    if not actor or actor["role"] not in ("admin", "superuser"):
+        raise HTTPException(403)
+    status = request.query_params.get("status")
+    with db() as c:
+        if status:
+            rows = c.execute(
+                """SELECT s.id, s.submission_type, s.status, s.submitted_at, s.reviewed_at, s.review_notes,
+                          s.user_id, u.username, u.display_name, u.email, u.role, s.payload_json
+                   FROM submissions s JOIN users u ON u.id = s.user_id
+                   WHERE s.status = ? ORDER BY s.submitted_at DESC""", (status,)).fetchall()
+        else:
+            rows = c.execute(
+                """SELECT s.id, s.submission_type, s.status, s.submitted_at, s.reviewed_at, s.review_notes,
+                          s.user_id, u.username, u.display_name, u.email, u.role, s.payload_json
+                   FROM submissions s JOIN users u ON u.id = s.user_id
+                   ORDER BY s.submitted_at DESC""").fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        try: d["payload"] = json.loads(d.pop("payload_json"))
+        except Exception: d["payload"] = {}
+        out.append(d)
+    return out
+
+@app.put("/api/submissions/{sid}/status")
+async def update_submission_status(sid: int, request: Request):
+    actor = get_actor(request)
+    if not actor: raise HTTPException(401)
+    data = await request.json()
+    new_status = (data.get("status") or "").strip()
+    notes = data.get("notes")
+    if new_status not in SUBMISSION_STATUSES:
+        raise HTTPException(400, f"Invalid status. Must be one of: {', '.join(sorted(SUBMISSION_STATUSES))}")
+    with db() as c:
+        row = c.execute("SELECT user_id, status FROM submissions WHERE id = ?", (sid,)).fetchone()
+        if not row: raise HTTPException(404)
+        # Clients can only withdraw their own pending submissions; admin/superuser can do anything
+        if actor["role"] == "client":
+            if row["user_id"] != actor["id"] or new_status != "withdrawn":
+                raise HTTPException(403, "Clients can only withdraw their own pending submissions")
+            if row["status"] not in ("pending_payment", "pending_review"):
+                raise HTTPException(400, "Submission past withdrawal window")
+        c.execute(
+            """UPDATE submissions SET status = ?, reviewed_at = ?, reviewed_by = ?, review_notes = ?
+               WHERE id = ?""",
+            (new_status, int(time.time()), actor["id"], notes, sid))
+        c.commit()
+    log_activity(actor["id"], "submission_status_change",
+                 f"sid={sid} -> {new_status}")
+    return {"ok": True, "status": new_status}
 
 # Serve badge artwork assets (mark.svg etc.) so inline SVGs in profiles can reference them
 BADDB_ASSETS_DIR = ROOT / "awards" / "badDB" / "assets"

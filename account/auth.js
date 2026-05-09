@@ -16,6 +16,10 @@
 
 (function () {
   const STORAGE_KEY = 'ag_session_v1';
+  // The FastAPI backend (auth source of truth) lives at rewards.aurora-gracewood.com.
+  // From any apex page (or the awards page on either host) we can fetch /api/me there
+  // to learn whether the user has a real session cookie and what their role + slug are.
+  const BACKEND_ORIGIN = 'https://rewards.aurora-gracewood.com';
 
   function readSession() {
     try {
@@ -36,7 +40,59 @@
 
   function isLoggedIn() { return !!readSession(); }
   function getUser() { return readSession(); }
-  function signOut() { clearSession(); renderChip(); }
+  function signOut() {
+    // Also clear the real backend session if we can reach it (CORS-permitting).
+    try {
+      fetch(BACKEND_ORIGIN + '/api/signout', { method: 'POST', credentials: 'include', mode: 'cors' }).catch(() => {});
+    } catch (e) {}
+    clearSession();
+    renderChip();
+  }
+
+  // Build the per-role URL that "My Profile" should point at, on the rewards backend.
+  function profileUrl(user) {
+    const role = user && user.role;
+    const path = ({
+      superuser: '/g-1vl00d/superuser',
+      admin:     '/admin/admin',
+      client:    '/client/client',
+    })[role] || '/awards/';
+    // Always absolute to the rewards subdomain so apex pages don't try to serve
+    // /account/ as a static path on the wrong host.
+    return BACKEND_ORIGIN + path;
+  }
+
+  // Fetch the real backend session on page-load. If a session cookie exists on the
+  // rewards.aurora-gracewood.com domain, this fills in role + slug + email so the chip
+  // and "My Profile" link reflect reality. Cross-origin from apex requires CORS on the
+  // backend — currently no CORS is configured, so this only works when auth.js is
+  // loaded from the rewards subdomain. From apex we silently fall back to localStorage.
+  async function syncFromBackend() {
+    try {
+      const url = (window.location.origin === BACKEND_ORIGIN)
+        ? '/api/me'
+        : BACKEND_ORIGIN + '/api/me';
+      const r = await fetch(url, { credentials: 'include', mode: 'cors' });
+      if (!r.ok) {
+        // No active backend session. If localStorage thinks we're signed in, leave that
+        // alone (stub behavior preserved), but DON'T treat it as authoritative.
+        return;
+      }
+      const data = await r.json();
+      const fresh = {
+        name: data.display_name || data.username || data.email,
+        email: data.email,
+        username: data.username,
+        role: data.role,
+        slug: data.slug,
+        id: data.id,
+        from_backend: true,
+      };
+      writeSession(fresh);
+    } catch (e) {
+      // CORS failure or network error — silent. localStorage stub remains source.
+    }
+  }
 
   /* The chip lives in the nav slot. It re-renders on agauth:change so any
      page using it stays in sync without polling. */
@@ -45,6 +101,9 @@
     chipSlot = slot;
     renderChip();
     document.addEventListener('agauth:change', renderChip);
+    // Once at install time, sync from the real backend so the chip shows the actual
+    // session (role + slug + email) rather than only what's in localStorage.
+    syncFromBackend();
   }
   function renderChip() {
     if (!chipSlot) return;
@@ -58,8 +117,8 @@
             <span class="ag-chip-caret">▾</span>
           </button>
           <div class="ag-chip-menu" role="menu">
-            <a role="menuitem" href="/account/">My Profile</a>
-            <a role="menuitem" href="/awards/#submit">My Submissions</a>
+            <a role="menuitem" href="${profileUrl(user)}">My Profile</a>
+            <a role="menuitem" href="${BACKEND_ORIGIN}/awards/#submit">My Submissions</a>
             <a role="menuitem" href="#" data-action="signout">Sign Out</a>
           </div>
         </div>`;

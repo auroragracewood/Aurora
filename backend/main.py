@@ -447,6 +447,14 @@ def get_actor(request):
 
     try: uid = int(as_id)
     except: return real_user
+
+    # Self-impersonation is a no-op — return the real user so signed_in stays true.
+    # realm.js auto-adds ?as=1 for /g-1vl00d/* paths; without this short-circuit the
+    # superuser viewing their own dashboard would look impersonated and the banner
+    # button would render as "Sign in" instead of "Sign out".
+    if uid == real_user["id"]:
+        return real_user
+
     with db() as c:
         r = c.execute(f"SELECT {_USER_COLS} FROM users WHERE id = ?", (uid,)).fetchone()
         if not r: return real_user  # Target doesn't exist; fall through to real user.

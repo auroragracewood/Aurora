@@ -120,14 +120,40 @@
   window.addEventListener("pageshow", syncVisibilityDropdowns);
   // Re-sync after a brief delay in case browser form-restoration kicks in late.
   setTimeout(syncVisibilityDropdowns, 100);
+  // Autosave the visibility toggles immediately on change. The Save button below
+  // still handles the text fields (bio, slug, etc.) but toggles are instant — flicking
+  // the switch IS the save, no extra click needed. If the save fails, syncVisibilityDropdowns
+  // reverts the UI to whatever the server actually has.
+  async function saveToggle(field, value, successMsg) {
+    try {
+      await AURORA.api("PUT", "/api/profile/me", { [field]: value });
+      me[field] = value;
+      if (typeof AGUI !== "undefined") AGUI.toast(successMsg, { type: "success", ttl: 2400 });
+    } catch (e) {
+      if (typeof AGUI !== "undefined") AGUI.toast("Couldn't save: " + e.message, { type: "error" });
+      syncVisibilityDropdowns();
+    }
+  }
+  AURORA.el("public_profile").addEventListener("change", async (ev) => {
+    const v = parseInt(ev.target.value) ? 1 : 0;
+    await saveToggle("public_profile", v, v ? "Profile is now public." : "Profile is now hidden.");
+  });
   AURORA.el("show_email_publicly").addEventListener("change", async (ev) => {
     const sel = ev.target;
-    if (sel.value !== "1") return;
+    if (sel.value !== "1") {
+      // Hiding — no dialog, just save silently.
+      await saveToggle("show_email_publicly", 0, "Email hidden from your public profile.");
+      return;
+    }
     const ok = await AGUI.confirmDialog(
       "Your email address will be visible to anyone who views your public profile at /u/" + (me.slug || me.id) + ". This may attract unwanted email or spam.",
       { title: "Show email publicly?", yesLabel: "Yes, show it", noLabel: "Keep it hidden" }
     );
-    if (ok === true) return;
+    if (ok === true) {
+      await saveToggle("show_email_publicly", 1, "Email visible on your public profile.");
+      return;
+    }
+    // Cancel — revert UI; DB is already 0.
     sel.value = "0";
     sel.selectedIndex = 0;
   });

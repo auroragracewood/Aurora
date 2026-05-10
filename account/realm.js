@@ -170,8 +170,68 @@ window.AURORA = (function () {
     _modalContent.innerHTML = "";
   }
 
+  /* ============== UNREAD INDICATOR + AUTH-CONTROL BANNER BUTTONS ==============
+     The realm-banner is hardcoded HTML in every role page. realm.js injects the
+     unread-count indicator (existing) and the signin/signout button (new) on
+     page load, so we don't have to update every role page when these change. */
+  let _signedIn = false;
+  function isSignedIn() { return _signedIn; }
+  function setSignedIn(v) { _signedIn = !!v; }
+
+  function adjustUnreadIndicator(delta) {
+    const banner = document.querySelector(".realm-banner");
+    if (!banner) return;
+    const dot = banner.querySelector(".unread-indicator");
+    if (!dot) return;
+    const cur = parseInt(dot.textContent.replace(/\+$/, ""), 10) || 0;
+    const next = Math.max(0, cur + delta);
+    if (next === 0) dot.remove();
+    else dot.textContent = next > 9 ? "9+" : String(next);
+  }
+
+  async function markMessageRead(messageId) {
+    /* Calls the backend mark-read endpoint, decrements the banner indicator on
+       success. Caller is responsible for updating the message-row UI (e.g.,
+       removing the UNREAD pill) after the promise resolves. */
+    await api("PUT", "/api/messages/" + encodeURIComponent(messageId) + "/read");
+    adjustUnreadIndicator(-1);
+  }
+
+  function renderBannerAuthControl(signedIn) {
+    /* Adds a sign-in or sign-out button to the realm-banner on page load.
+       Sign-in -> redirect to /account/ which has the modal; on success the
+       user lands back here via that page's "Open Aurora Awards" button or
+       direct URL. Sign-out -> POST /api/signout, reload to clear UI state. */
+    const banner = document.querySelector(".realm-banner");
+    if (!banner) return;
+    const existing = banner.querySelector(".realm-auth-btn");
+    if (existing) existing.remove();
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "realm-auth-btn " + (signedIn ? "is-out" : "is-in");
+    btn.textContent = signedIn ? "Sign out" : "Sign in";
+    btn.style.cssText =
+      "margin-left:12px;padding:4px 12px;border-radius:6px;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;" +
+      (signedIn
+        ? "background:transparent;color:#fff;border:1px solid rgba(255,255,255,.40);"
+        : "background:linear-gradient(135deg,#4a5fc1,#f4cfd9);color:#08101b;border:0;");
+    btn.addEventListener("click", async () => {
+      if (signedIn) {
+        try {
+          await fetch("/api/signout", { method: "POST", credentials: "include" });
+        } catch (e) {}
+        window.location.reload();
+      } else {
+        const next = encodeURIComponent(window.location.pathname);
+        window.location.href = "/account/?next=" + next;
+      }
+    });
+    banner.appendChild(btn);
+  }
+
   return { asId, withAs, api, el, setStatus, fmtTs, avatarHTML, rolesChips, showFatal, showAccountChangedBanner,
-           openBadgeModal, closeBadgeModal };
+           openBadgeModal, closeBadgeModal,
+           isSignedIn, setSignedIn, adjustUnreadIndicator, markMessageRead, renderBannerAuthControl };
 })();
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -186,6 +246,8 @@ document.addEventListener("DOMContentLoaded", function () {
       const me = await AURORA.api("GET", "/api/me");
       if (initial) {
         baselineChangedAt = me.admin_changed_at || 0;
+        AURORA.setSignedIn(!!me.signed_in);
+        AURORA.renderBannerAuthControl(!!me.signed_in);
         if (me.unread_messages && me.unread_messages > 0) {
           const banner = document.querySelector(".realm-banner");
           if (banner && !banner.querySelector(".unread-indicator")) {

@@ -406,6 +406,11 @@ def get_actor(request):
       2. Dev override `?as=N` query param → impersonate user N (kept for now;
          should be removed before public launch)
     Cookie path takes precedence if both are present.
+
+    Adds `_auth_method` to the returned dict: 'cookie' for real session,
+    'as_override' for dev impersonation. Used by /api/me to expose `signed_in`
+    so the UI can gate editing behind real auth without breaking the dev
+    workflow that still uses ?as=.
     """
     sid = request.cookies.get("ag_session")
     if sid:
@@ -417,14 +422,15 @@ def get_actor(request):
             if r:
                 c.execute("UPDATE sessions SET last_seen_at = ? WHERE id = ?", (int(time.time()), sid))
                 c.commit()
-                return dict(r)
+                d = dict(r); d["_auth_method"] = "cookie"; return d
     as_id = request.query_params.get("as")
     if not as_id: return None
     try: uid = int(as_id)
     except: return None
     with db() as c:
         r = c.execute(f"SELECT {_USER_COLS} FROM users WHERE id = ?", (uid,)).fetchone()
-        return dict(r) if r else None
+        if not r: return None
+        d = dict(r); d["_auth_method"] = "as_override"; return d
 
 def log_activity(user_id, action, detail=None):
     with db() as c:
@@ -926,6 +932,9 @@ def public_profile(slug: str):
 def api_me(request: Request):
     u = get_actor(request)
     if not u: raise HTTPException(401, "Pass ?as=<user_id> in dev mode")
+    # signed_in: True only when authenticated by a real cookie session, not the dev ?as= override.
+    # UI gates editing on this so signed-out viewers can browse but not modify their account.
+    u["signed_in"] = u.pop("_auth_method", None) == "cookie"
     if u.get("links_json"):
         try: u["links"] = json.loads(u["links_json"])
         except Exception: u["links"] = []

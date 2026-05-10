@@ -1491,25 +1491,28 @@ def serve_splash_css():
     return Response(f.read_text(encoding="utf-8"), media_type="text/css",
                     headers={"Cache-Control": "public, max-age=3600"})
 
+_NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
+
+# Realm-page responses always revalidate so deploys take effect immediately for users
+# without requiring a manual hard-refresh. The HTML files are tiny; revalidation cost is
+# negligible. Same pattern as /account/realm.js etc.
 @app.get("/g-1vl00d/{page}", response_class=HTMLResponse)
 def superuser_realm(page: str):
     f = REALMS_DIR / "g-1vl00d" / (page + ".html")
     if not f.exists(): raise HTTPException(404)
-    return f.read_text(encoding="utf-8")
+    return Response(f.read_text(encoding="utf-8"), media_type="text/html", headers=_NO_CACHE)
 
 @app.get("/admin/{page}", response_class=HTMLResponse)
 def admin_realm(page: str):
     f = REALMS_DIR / "admin" / (page + ".html")
     if not f.exists(): raise HTTPException(404)
-    return f.read_text(encoding="utf-8")
+    return Response(f.read_text(encoding="utf-8"), media_type="text/html", headers=_NO_CACHE)
 
 @app.get("/client/{page}", response_class=HTMLResponse)
 def client_realm(page: str):
     f = REALMS_DIR / "client" / (page + ".html")
     if not f.exists(): raise HTTPException(404)
-    return f.read_text(encoding="utf-8")
-
-_NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
+    return Response(f.read_text(encoding="utf-8"), media_type="text/html", headers=_NO_CACHE)
 
 @app.get("/account/realm.css")
 def realm_css(): return Response((REALMS_DIR / "realm.css").read_text(encoding="utf-8"), media_type="text/css", headers=_NO_CACHE)

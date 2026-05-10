@@ -254,11 +254,13 @@ window.AURORA = (function () {
     btn.type = "button";
     btn.className = "realm-auth-btn " + (signedIn ? "is-out" : "is-in");
     btn.textContent = signedIn ? "Sign out" : "Sign in";
+    // Banner buttons sit on a light gradient (copper/blueberry/cyan + light pink) where the
+    // title text is dark (#08101b). Match that — dark text + dark subtle border on transparent.
     btn.style.cssText =
       "margin-left:12px;padding:4px 12px;border-radius:6px;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;" +
-      (signedIn
-        ? "background:transparent;color:#fff;border:1px solid rgba(255,255,255,.40);"
-        : "background:linear-gradient(135deg,#4a5fc1,#f4cfd9);color:#08101b;border:0;");
+      "background:transparent;color:#08101b;border:1px solid rgba(8,16,27,.40);transition:background .15s;";
+    btn.addEventListener("mouseenter", () => { btn.style.background = "rgba(8,16,27,.08)"; });
+    btn.addEventListener("mouseleave", () => { btn.style.background = "transparent"; });
     btn.addEventListener("click", async () => {
       if (signedIn) {
         try {

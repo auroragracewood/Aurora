@@ -53,11 +53,11 @@
     <span></span>
   </div>
   <div class="row"><span class="label">Public profile</span>
-    <select id="public_profile"><option value="0">Hidden</option><option value="1">Visible</option></select>
+    <select id="public_profile" autocomplete="off"><option value="0">Hidden</option><option value="1">Visible</option></select>
     <span></span>
   </div>
   <div class="row"><span class="label">Show email publicly</span>
-    <select id="show_email_publicly">
+    <select id="show_email_publicly" autocomplete="off">
       <option value="0">Hidden (recommended)</option>
       <option value="1">Visible</option>
     </select>
@@ -104,8 +104,20 @@
   AURORA.el("username").value = me.username || "";
   AURORA.el("slug").value = me.slug || "";
   AURORA.el("bio").value = me.bio || "";
-  AURORA.el("public_profile").value = String(me.public_profile || 0);
-  AURORA.el("show_email_publicly").value = String(me.show_email_publicly || 0);
+  // Sync the two visibility dropdowns from /api/me. Wrapped because Chrome/Firefox
+  // restore <select> state across F5 refreshes and bfcache navigations, which can
+  // override our initial assignment. We re-run this on `pageshow` so the *server*
+  // truth wins over any browser-cached UI state.
+  function syncVisibilityDropdowns() {
+    const pp = me.public_profile ? 1 : 0;
+    const se = me.show_email_publicly ? 1 : 0;
+    const ppEl = AURORA.el("public_profile");
+    const seEl = AURORA.el("show_email_publicly");
+    ppEl.value = String(pp); ppEl.selectedIndex = pp;
+    seEl.value = String(se); seEl.selectedIndex = se;
+  }
+  syncVisibilityDropdowns();
+  window.addEventListener("pageshow", syncVisibilityDropdowns);
   AURORA.el("show_email_publicly").addEventListener("change", async (ev) => {
     const sel = ev.target;
     if (sel.value !== "1") return;

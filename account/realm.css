@@ -35,7 +35,11 @@ body {
 .realm-banner.superuser { background: linear-gradient(135deg, var(--gc-copper), var(--ag-light-pink)); color: #08101b; }
 .realm-banner.admin { background: linear-gradient(135deg, var(--ag-blueberry), var(--ag-light-pink)); color: #08101b; }
 .realm-banner.client { background: linear-gradient(135deg, var(--gc-cyan), var(--ag-light-pink)); color: #08101b; }
-.realm-banner .as-info { font-family: ui-monospace, monospace; font-size: .7rem; opacity: .8; }
+.realm-banner .as-info { display: none; }
+/* The .as-info dev-override indicator ("acting as user_id=N") is hidden by default.
+   It can be re-enabled in the future for an explicit "viewing as <slug>" feature
+   when superuser legitimately impersonates another user. For real signed-in users
+   on their own realm, no indicator is needed. */
 
 .nav { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px 0; }
 .nav a {

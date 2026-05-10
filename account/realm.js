@@ -1,17 +1,13 @@
 window.AURORA = (function () {
-  function defaultAsForPath() {
-    const p = window.location.pathname;
-    if (p.startsWith("/g-1vl00d")) return "1";
-    if (p.startsWith("/admin"))    return "2";
-    if (p.startsWith("/client"))   return "9100";
-    return "1";
-  }
+  // Cookie auth is the only auth path. ?as= is honored ONLY if explicitly present in the URL
+  // AND the cookie session belongs to a superuser (enforced server-side in get_actor).
+  // No more test-user fallback IDs — every account is real.
   const url = new URL(window.location.href);
-  const asId = url.searchParams.get("as") || defaultAsForPath();
+  const asId = url.searchParams.get("as") || null;
 
   function withAs(path) {
     const u = new URL(path, window.location.origin);
-    u.searchParams.set("as", asId);
+    if (asId) u.searchParams.set("as", asId);
     return u.toString();
   }
   async function api(method, path, body) {

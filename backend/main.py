@@ -181,23 +181,12 @@ def init_db():
             created_at INTEGER NOT NULL
         );
         """)
-        existing = c.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        if existing == 0:
+        # Settings table seed — site-wide defaults written once on a fresh DB.
+        # Users are NOT seeded — every account on the live system is real (no test users).
+        # Production bootstrap (signing up the first superuser) is handled out-of-band.
+        existing_settings = c.execute("SELECT COUNT(*) FROM settings").fetchone()[0]
+        if existing_settings == 0:
             now = int(time.time())
-            # Clients seed with slug=str(id); admin/superuser keep readable text slugs.
-            seeds = [
-                # uid, email, username, display, role, status, bio, public, slug
-                (1,    "superuser@aurora.local", "aurora",  "Aurora",       "superuser", "active", "I notice work that endures.", 1, "aurora"),
-                (2,    "admin@aurora.local",     "admin1",  "Admin Test",   "admin",     "active", "Editorial admin for testing.", 1, "admin1"),
-                (9100, "client@aurora.local",    "client1", "Client Test",  "client",    "active", "Test client account.",        0, "9100"),
-            ]
-            for uid, email, username, display, role, status, bio, public, slug in seeds:
-                c.execute("""INSERT INTO users (id, email, username, display_name, role, status, bio, slug, public_profile, created_at, verified_at)
-                             VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-                          (uid, email, username, display, role, status, bio, slug, public, now, now))
-            for uid in (1, 2, 9100):
-                for ch in ("submissions", "refunds", "weekly_digest", "system_alerts"):
-                    c.execute("INSERT INTO notification_prefs (user_id, channel, via_email, via_inapp) VALUES (?,?,1,1)", (uid, ch))
             for k, v in (("site_name","Aurora Gracewood"),("tagline","Awards, recognition, editorial."),("currency","CAD"),("submission_window_open","false")):
                 c.execute("INSERT INTO settings (scope, key, value, updated_at) VALUES (?,?,?,?)", ("site", k, v, now))
         c.commit()
@@ -263,30 +252,9 @@ def migrate_db():
         if "password_reset_expires" not in existing_user_cols:
             c.execute("ALTER TABLE users ADD COLUMN password_reset_expires INTEGER")
 
-        # Migrate the seeded superuser to the production email + locked username, IDEMPOTENT —
-        # only fires if still on the seed values (id=1 + email=superuser@aurora.local).
-        c.execute("""UPDATE users
-                     SET email = 'superuser@aurora-gracewood.com',
-                         username = 'superuser',
-                         username_locked = 1,
-                         status = 'pending'
-                     WHERE id = 1 AND email = 'superuser@aurora.local'""")
-
-        # 2026-05-09: Convert the seeded test admin (id=2) to the user's real email
-        # so they can complete the actual signup flow (verify email → set password)
-        # and access the admin realm via real cookie auth. Idempotent — only fires if
-        # the row still has the seed email. password_hash is already NULL on the seed,
-        # so signup will trigger the verify-email path correctly when they POST /api/signup.
-        c.execute("""UPDATE users
-                     SET email = 'aandrew7.am@gmail.com'
-                     WHERE id = 2 AND email = 'admin@aurora.local'""")
-
-        # 2026-05-09: Same pattern for the seeded test client (id=9100) — assign to the
-        # user's secondary gmail so they can sign up as the test client and exercise the
-        # client realm. Idempotent.
-        c.execute("""UPDATE users
-                     SET email = 'gracewoodaurora@gmail.com'
-                     WHERE id = 9100 AND email = 'client@aurora.local'""")
+        # (Earlier email-migration code removed 2026-05-09 — those one-shot migrations
+        # have already fired on me-think and the seed emails no longer exist. Keeping
+        # the code would be cosmetic at best and misleading at worst.)
 
         # Retroactive grant: every existing user gets the Starter badge with frozen fields.
         # design_year still STARTER_DESIGN_YEAR; awardee_text and destination_url computed per user.
@@ -1465,7 +1433,15 @@ def get_messages(request: Request):
                             LEFT JOIN users ut ON ut.id = m.to_user
                             WHERE m.from_user = ? OR m.to_user = ?
                             ORDER BY m.created_at DESC""", (u["id"], u["id"])).fetchall()
-        return [dict(r) for r in rows]
+        # Add `inbound` flag computed server-side (we know who the actor is). Frontend
+        # used to compare to_user against the URL's ?as= param, which broke when ?as= was
+        # null (after removing the test-user fallback).
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["inbound"] = (d["to_user"] == u["id"])
+            out.append(d)
+        return out
 
 @app.post("/api/messages")
 async def send_message(request: Request):

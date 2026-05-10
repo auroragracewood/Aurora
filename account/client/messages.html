@@ -51,7 +51,7 @@ function renderMetaCell(m, inbound) {
 
 function wireRow(row, m) {
   // Bind both mark and unmark buttons; on success, swap the meta cell to reflect the new state.
-  const inbound = m.to_user == AURORA.asId;
+  const inbound = !!m.inbound;
   row.querySelectorAll("[data-mark]").forEach(b => b.addEventListener("click", async () => {
     b.disabled = true; const orig = b.textContent; b.textContent = "…";
     try {
@@ -83,7 +83,7 @@ async function loadMessages() {
   const e = AURORA.el("messages-list");
   if (list.length === 0) { e.innerHTML = '<p style="color:var(--gc-dim)">No messages yet.</p>'; return; }
   e.innerHTML = list.map(m => {
-    const inbound = m.to_user == AURORA.asId;
+    const inbound = !!m.inbound;
     return '<div class="msg-row" data-mid="' + m.id + '"><div>' +
       '<div class="msg-from">' + (inbound ? '↓ FROM' : '↑ TO') + ' <span class="role-tag ' + (inbound ? m.from_role : m.to_role) + '">' + (inbound ? m.from_role : m.to_role) + '</span> ' + (inbound ? m.from_name : m.to_name) + ' (#' + (inbound ? m.from_user : m.to_user) + ')</div>' +
       '<div class="msg-subject">' + (m.subject || "(no subject)") + '</div>' +

@@ -272,6 +272,15 @@ def migrate_db():
                          status = 'pending'
                      WHERE id = 1 AND email = 'superuser@aurora.local'""")
 
+        # 2026-05-09: Convert the seeded test admin (id=2) to the user's real email
+        # so they can complete the actual signup flow (verify email → set password)
+        # and access the admin realm via real cookie auth. Idempotent — only fires if
+        # the row still has the seed email. password_hash is already NULL on the seed,
+        # so signup will trigger the verify-email path correctly when they POST /api/signup.
+        c.execute("""UPDATE users
+                     SET email = 'aandrew7.am@gmail.com'
+                     WHERE id = 2 AND email = 'admin@aurora.local'""")
+
         # Retroactive grant: every existing user gets the Starter badge with frozen fields.
         # design_year still STARTER_DESIGN_YEAR; awardee_text and destination_url computed per user.
         # Starter badge funnels clicks to /awards/?from={slug} (decided 2026-05-08): when a
@@ -396,17 +405,26 @@ _USER_COLS = "id, email, username, display_name, role, status, bio, avatar_url, 
 def get_actor(request):
     """Returns the acting user dict, or None if no auth.
 
-    Two paths:
-      1. Real session cookie `ag_session` → looked up in `sessions` table → user
-      2. Dev override `?as=N` query param → impersonate user N (kept for now;
-         should be removed before public launch)
-    Cookie path takes precedence if both are present.
+    Auth rules (Option C — superuser-only impersonation, locked 2026-05-09):
 
-    Adds `_auth_method` to the returned dict: 'cookie' for real session,
-    'as_override' for dev impersonation. Used by /api/me to expose `signed_in`
-    so the UI can gate editing behind real auth without breaking the dev
-    workflow that still uses ?as=.
+      1. Real session cookie `ag_session` → looked up in `sessions` table → user.
+         This is the ONLY authentication path for non-superusers.
+
+      2. `?as=N` query param IS respected ONLY IF the requester:
+         (a) has a real cookie session AND
+         (b) that real session's user has role='superuser'.
+         For everyone else (no cookie, or cookie but role≠superuser), ?as= is
+         silently ignored and the real cookie user (or None) is returned.
+
+    This closes the security hole where any anonymous visitor could impersonate
+    any user by appending `?as=<id>` to a URL. Now only signed-in superusers
+    can impersonate, which doubles as a real "view as user" admin feature.
+
+    Adds `_auth_method` to the returned dict: 'cookie' for the real session,
+    'as_override' for legitimate superuser impersonation. /api/me uses this
+    to expose `signed_in` to the UI.
     """
+    real_user = None
     sid = request.cookies.get("ag_session")
     if sid:
         with db() as c:
@@ -417,15 +435,24 @@ def get_actor(request):
             if r:
                 c.execute("UPDATE sessions SET last_seen_at = ? WHERE id = ?", (int(time.time()), sid))
                 c.commit()
-                d = dict(r); d["_auth_method"] = "cookie"; return d
+                real_user = dict(r); real_user["_auth_method"] = "cookie"
+
     as_id = request.query_params.get("as")
-    if not as_id: return None
+    if not as_id:
+        return real_user
+
+    # Impersonation gate: must already be signed in as a superuser to use ?as=.
+    if not real_user or real_user.get("role") != "superuser":
+        return real_user  # Silently ignore ?as= for non-superusers / strangers.
+
     try: uid = int(as_id)
-    except: return None
+    except: return real_user
     with db() as c:
         r = c.execute(f"SELECT {_USER_COLS} FROM users WHERE id = ?", (uid,)).fetchone()
-        if not r: return None
-        d = dict(r); d["_auth_method"] = "as_override"; return d
+        if not r: return real_user  # Target doesn't exist; fall through to real user.
+        d = dict(r); d["_auth_method"] = "as_override"
+        d["_impersonator_id"] = real_user["id"]  # audit trail — who's pretending to be whom
+        return d
 
 def log_activity(user_id, action, detail=None):
     with db() as c:

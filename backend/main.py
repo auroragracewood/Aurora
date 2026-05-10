@@ -489,6 +489,30 @@ def verify_password(password, stored):
 def generate_token():
     return secrets.token_urlsafe(32)
 
+# ---- Email & password validators (shared between signup, verify, reset) ----
+# Email: at least 1 char before @, at least 2 chars in domain label, dot, at least 2 in TLD.
+# Pattern matches the client-side regex in auth.js + _auth_form_html so the user can't get
+# a different result client- vs server-side.
+EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s.]{2,}\.[^@\s]{2,}$')
+PASSWORD_SYMBOL_RE = re.compile(r"""[!@#$%^&*()_+\-=\[\]{}|;':",.<>/?~`\\]""")
+
+def validate_email_format(email: str) -> str | None:
+    """Returns None if email is valid; else a human-readable error message."""
+    if not email or "@" not in email:
+        return "Email must contain @"
+    if not EMAIL_RE.match(email):
+        return "Email must look like name@example.com (≥2 chars before and after the dot)"
+    return None
+
+def validate_password_rules(password: str) -> list:
+    """Returns a list of unmet rules; empty list means valid."""
+    fails = []
+    if len(password) < 7: fails.append("at least 7 characters")
+    if not re.search(r'[A-Z]', password): fails.append("at least 1 uppercase letter")
+    if not re.search(r'[0-9]', password): fails.append("at least 1 number")
+    if not PASSWORD_SYMBOL_RE.search(password): fails.append("at least 1 symbol")
+    return fails
+
 def _read_resend_key():
     if not RESEND_KEY_FILE.exists():
         return None
@@ -553,12 +577,17 @@ def _simple_page(title, message):
 <body><div class="card"><h1>{title}</h1><p>{message}</p><p><a href="/awards/">Aurora Awards →</a></p></div></body></html>"""
 
 def _auth_form_html(token, email, kind, locked_username=None):
-    """kind = 'verify' or 'reset'. For 'verify', shows username field (locked or free).
-    For 'reset', just password field."""
+    """kind = 'verify' or 'reset'. Renders the password-setup form with:
+       - eye icon to toggle visibility on each password field
+       - confirm-password field that must match
+       - live strength meter (length, uppercase, digit, symbol)
+       - submit button disabled until ALL rules met AND passwords match
+       - same rules enforced server-side in /api/verify and /api/reset
+    """
     safe = html_mod.escape
     if kind == "verify":
         title = "Set up your account"
-        sub = f"Welcome to Aurora Gracewood. Set a username and password — you'll use these to sign in."
+        sub = "Welcome to Aurora Gracewood. Set a username and password — you'll use these to sign in."
         action = f"/api/verify/{safe(token)}"
         btn_label = "Set up my account →"
         if locked_username:
@@ -569,9 +598,10 @@ def _auth_form_html(token, email, kind, locked_username=None):
         else:
             username_field = (
                 '<div class="ag-field"><label>Choose a username</label>'
-                '<input type="text" name="username" required minlength="3" maxlength="40" '
+                '<input type="text" name="username" id="username" required minlength="3" maxlength="40" '
                 'pattern="[a-zA-Z0-9_-]+" '
-                'placeholder="3-40 chars, letters/numbers/_- only" autocomplete="username"></div>'
+                'placeholder="3-40 chars, letters/numbers/_- only" autocomplete="username">'
+                '<div class="hint" id="username-hint"></div></div>'
             )
     else:
         title = "Reset your password"
@@ -583,51 +613,196 @@ def _auth_form_html(token, email, kind, locked_username=None):
 <link rel="icon" type="image/png" href="/assets/logo.png">
 <style>
 body{{margin:0;background:linear-gradient(135deg,#1c1f2a,#0a0a0e);color:#f6f7fb;font-family:Inter,system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}}
-.card{{background:rgba(28,31,42,.96);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:32px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)}}
+.card{{background:rgba(28,31,42,.96);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:32px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)}}
 h1{{color:#a3e3c1;margin:0 0 8px;font-size:1.4rem;letter-spacing:-.01em}}
 .sub{{color:rgba(246,247,251,.7);margin:0 0 24px;font-size:.95rem;line-height:1.5}}
 .ag-field{{display:flex;flex-direction:column;gap:6px;margin:0 0 16px}}
 .ag-field label{{font-size:.82rem;color:rgba(246,247,251,.84);font-weight:700}}
-.ag-field input{{background:rgba(0,0,0,.35);color:#f6f7fb;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:11px 14px;font:inherit;font-size:.95rem}}
+.ag-field input{{background:rgba(0,0,0,.35);color:#f6f7fb;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:11px 14px;font:inherit;font-size:.95rem;width:100%;box-sizing:border-box}}
 .ag-field input:focus{{outline:2px solid #4a5fc1;outline-offset:1px}}
-button{{width:100%;padding:13px;background:linear-gradient(135deg,#4a5fc1,#f4cfd9);color:#0a0a0e;border:0;border-radius:12px;font:inherit;font-weight:800;cursor:pointer;font-size:.98rem}}
-button:hover{{filter:brightness(1.07)}}
-button:disabled{{opacity:.5;cursor:not-allowed}}
+.pw-row{{position:relative;display:flex;align-items:center}}
+.pw-row input{{padding-right:46px}}
+.eye-btn{{position:absolute;right:6px;width:36px;height:36px;background:transparent;border:0;color:rgba(246,247,251,.7);cursor:pointer;font-size:1.1rem;padding:0;border-radius:6px}}
+.eye-btn:hover{{background:rgba(255,255,255,.06);color:#f6f7fb}}
+.eye-btn:focus{{outline:1px solid rgba(255,255,255,.3);outline-offset:0}}
+.strength{{margin-top:8px}}
+.strength-bar{{height:6px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}}
+.strength-fill{{height:100%;width:0;background:#ff8fd8;border-radius:999px;transition:width .25s,background .25s}}
+.strength-label{{font-size:.74rem;color:rgba(246,247,251,.55);margin-top:4px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}}
+.rules{{list-style:none;padding:0;margin:8px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}}
+.rules li{{font-size:.78rem;color:rgba(246,247,251,.55);position:relative;padding-left:18px}}
+.rules li::before{{content:"○";position:absolute;left:0;color:rgba(246,247,251,.45)}}
+.rules li.met{{color:#a3e3c1}}
+.rules li.met::before{{content:"✓";color:#a3e3c1}}
+.match{{font-size:.78rem;margin-top:4px;font-weight:700}}
+.match.ok{{color:#a3e3c1}}
+.match.no{{color:#ff8fd8}}
+.match.empty{{color:rgba(246,247,251,.45)}}
+.hint{{font-size:.74rem;color:rgba(246,247,251,.55);margin-top:2px}}
+.hint.bad{{color:#ff8fd8}}
+button.submit{{width:100%;padding:13px;background:linear-gradient(135deg,#4a5fc1,#f4cfd9);color:#0a0a0e;border:0;border-radius:12px;font:inherit;font-weight:800;cursor:pointer;font-size:.98rem;margin-top:6px}}
+button.submit:hover{{filter:brightness(1.07)}}
+button.submit:disabled{{opacity:.45;cursor:not-allowed;filter:none}}
 .err{{color:#ff8fd8;font-size:.85rem;margin-top:8px;min-height:1em}}
 .meta{{color:rgba(246,247,251,.5);font-size:.75rem;margin-top:16px;line-height:1.5}}
 </style></head>
 <body><div class="card">
 <h1>{title}</h1><p class="sub">{sub}</p>
-<form id="f" autocomplete="on">
+<form id="f" autocomplete="on" novalidate>
   <div class="ag-field"><label>Email</label><input type="email" value="{safe(email)}" disabled style="opacity:0.55"></div>
   {username_field}
-  <div class="ag-field"><label>Password</label>
-    <input type="password" name="password" id="pw" required minlength="8" maxlength="200" autocomplete="new-password" placeholder="At least 8 characters"></div>
-  <button id="btn" type="submit">{btn_label}</button>
+  <div class="ag-field">
+    <label>Password</label>
+    <div class="pw-row">
+      <input type="password" name="password" id="pw" required maxlength="200" autocomplete="new-password" placeholder="Choose a strong password">
+      <button type="button" class="eye-btn" data-target="pw" aria-label="Show password" title="Show / hide password">👁</button>
+    </div>
+    <div class="strength">
+      <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+      <div class="strength-label" id="strength-label">Type a password</div>
+    </div>
+    <ul class="rules" id="rules">
+      <li data-rule="len">≥7 characters</li>
+      <li data-rule="cap">1 uppercase letter</li>
+      <li data-rule="num">1 number</li>
+      <li data-rule="sym">1 symbol</li>
+    </ul>
+  </div>
+  <div class="ag-field">
+    <label>Confirm password</label>
+    <div class="pw-row">
+      <input type="password" name="password2" id="pw2" required maxlength="200" autocomplete="new-password" placeholder="Type the same password again">
+      <button type="button" class="eye-btn" data-target="pw2" aria-label="Show confirm password" title="Show / hide password">👁</button>
+    </div>
+    <div class="match empty" id="match-hint">Will appear once you start typing</div>
+  </div>
+  <button id="btn" class="submit" type="submit" disabled>{btn_label}</button>
   <div class="err" id="err"></div>
 </form>
 <div class="meta">By continuing you agree to Aurora Gracewood's terms.</div>
 </div>
 <script>
-document.getElementById('f').addEventListener('submit', async (e) => {{
-  e.preventDefault();
-  const btn = document.getElementById('btn'); const err = document.getElementById('err');
-  btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Working…'; err.textContent = '';
-  const body = {{ password: document.getElementById('pw').value }};
-  const u = document.querySelector('input[name=username]');
-  if (u) body.username = u.value;
-  try {{
-    const r = await fetch('{action}', {{
-      method: 'POST', headers: {{ 'Content-Type': 'application/json' }},
-      body: JSON.stringify(body), credentials: 'include',
+(function() {{
+  const SYM_RE = /[!@#$%^&*()_+\\-=\\[\\]{{}}|;':",.<>/?~`\\\\]/;
+  const RULES = {{
+    len: pw => pw.length >= 7,
+    cap: pw => /[A-Z]/.test(pw),
+    num: pw => /[0-9]/.test(pw),
+    sym: pw => SYM_RE.test(pw),
+  }};
+  const LABELS = ['Type a password','Very weak','Weak','Fair','Strong','Excellent'];
+  const COLORS = ['#ff8fd8','#ff8fd8','#ffb469','#f4cfd9','#a3e3c1','#a3e3c1'];
+
+  const pw = document.getElementById('pw');
+  const pw2 = document.getElementById('pw2');
+  const fill = document.getElementById('strength-fill');
+  const label = document.getElementById('strength-label');
+  const matchEl = document.getElementById('match-hint');
+  const btn = document.getElementById('btn');
+  const err = document.getElementById('err');
+  const ruleEls = document.querySelectorAll('#rules li');
+
+  function evalStrength() {{
+    const v = pw.value;
+    let met = 0;
+    ruleEls.forEach(li => {{
+      const r = li.dataset.rule;
+      const ok = RULES[r](v);
+      li.classList.toggle('met', ok);
+      if (ok) met++;
     }});
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Failed');
-    window.location = d.redirect || '/awards/';
-  }} catch (e) {{
-    err.textContent = e.message; btn.disabled = false; btn.textContent = orig;
+    const idx = v.length === 0 ? 0 : Math.min(5, Math.max(1, met + (v.length >= 12 ? 1 : 0)));
+    fill.style.width = (idx * 20) + '%';
+    fill.style.background = COLORS[idx];
+    label.textContent = LABELS[idx];
+    return met === 4;
   }}
-}});
+
+  function evalMatch() {{
+    if (pw2.value.length === 0) {{
+      matchEl.className = 'match empty';
+      matchEl.textContent = 'Will appear once you start typing';
+      return false;
+    }}
+    if (pw.value === pw2.value) {{
+      matchEl.className = 'match ok';
+      matchEl.textContent = '✓ Passwords match';
+      return true;
+    }}
+    matchEl.className = 'match no';
+    matchEl.textContent = '✗ Passwords don\\'t match yet';
+    return false;
+  }}
+
+  function gate() {{
+    const strong = evalStrength();
+    const matched = evalMatch();
+    const u = document.getElementById('username');
+    let userOk = true;
+    if (u) {{
+      const uv = u.value;
+      const valid = uv.length >= 3 && uv.length <= 40 && /^[a-zA-Z0-9_-]+$/.test(uv);
+      userOk = valid;
+      const hint = document.getElementById('username-hint');
+      if (hint) {{
+        if (uv.length === 0) {{
+          hint.textContent = '';
+          hint.className = 'hint';
+        }} else if (!valid) {{
+          hint.textContent = '3–40 chars; letters, numbers, underscore, hyphen only';
+          hint.className = 'hint bad';
+        }} else {{
+          hint.textContent = '✓';
+          hint.className = 'hint';
+          hint.style.color = '#a3e3c1';
+        }}
+      }}
+    }}
+    btn.disabled = !(strong && matched && userOk);
+  }}
+
+  pw.addEventListener('input', gate);
+  pw2.addEventListener('input', gate);
+  const u = document.getElementById('username');
+  if (u) u.addEventListener('input', gate);
+
+  document.querySelectorAll('.eye-btn').forEach(b => {{
+    b.addEventListener('click', () => {{
+      const target = document.getElementById(b.dataset.target);
+      if (!target) return;
+      const showing = target.type === 'text';
+      target.type = showing ? 'password' : 'text';
+      b.textContent = showing ? '👁' : '🙈';
+      b.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    }});
+  }});
+
+  document.getElementById('f').addEventListener('submit', async (e) => {{
+    e.preventDefault();
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = 'Working…';
+    err.textContent = '';
+    const body = {{ password: pw.value }};
+    if (u) body.username = u.value;
+    try {{
+      const r = await fetch('{action}', {{
+        method: 'POST', headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify(body), credentials: 'include',
+      }});
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || 'Failed');
+      window.location = d.redirect || '/awards/';
+    }} catch (ex) {{
+      err.textContent = ex.message;
+      btn.disabled = false;
+      btn.textContent = orig;
+    }}
+  }});
+
+  gate();
+}})();
 </script></body></html>"""
 
 
@@ -643,8 +818,9 @@ async def api_signup(request: Request):
     data = await request.json()
     email = (data.get("email") or "").strip().lower()
     role = (data.get("role") or "client").strip()
-    if not email or "@" not in email or "." not in email:
-        raise HTTPException(400, "Valid email required")
+    err = validate_email_format(email)
+    if err:
+        raise HTTPException(400, err)
     if role not in ("client", "admin", "superuser"):
         role = "client"
 
@@ -704,8 +880,9 @@ async def api_verify(token: str, request: Request):
     data = await request.json()
     submitted_username = (data.get("username") or "").strip()
     password = (data.get("password") or "")
-    if len(password) < 8:
-        raise HTTPException(400, "Password must be at least 8 characters")
+    fails = validate_password_rules(password)
+    if fails:
+        raise HTTPException(400, "Password needs " + "; ".join(fails))
 
     with db() as c:
         r = c.execute("""SELECT id, email, username, role, username_locked, verify_expires
@@ -832,8 +1009,9 @@ def reset_page(token: str):
 async def api_reset(token: str, request: Request):
     data = await request.json()
     password = (data.get("password") or "")
-    if len(password) < 8:
-        raise HTTPException(400, "Password must be at least 8 characters")
+    fails = validate_password_rules(password)
+    if fails:
+        raise HTTPException(400, "Password needs " + "; ".join(fails))
     with db() as c:
         r = c.execute("""SELECT id, role, password_reset_expires
                          FROM users WHERE password_reset_token = ?""", (token,)).fetchone()

@@ -178,7 +178,10 @@
           </label>
           <label class="ag-field ag-field-password">
             <span>Password</span>
-            <input name="password" type="password" autocomplete="current-password" minlength="8" />
+            <div class="ag-pw-row">
+              <input name="password" type="password" autocomplete="current-password" />
+              <button type="button" class="ag-eye-btn" data-eye="password" aria-label="Show password" title="Show / hide password">👁</button>
+            </div>
           </label>
           <button class="ag-submit" type="submit"></button>
           <div class="ag-modal-links" style="margin-top:12px;text-align:center;font-size:.84rem">
@@ -201,6 +204,17 @@
     modalEl.querySelector('.ag-modal-form').addEventListener('submit', (e) => {
       e.preventDefault();
       handleSubmit(e.currentTarget);
+    });
+    // Eye-icon toggles for any password field in the modal.
+    modalEl.querySelectorAll('.ag-eye-btn').forEach((b) => {
+      b.addEventListener('click', () => {
+        const inp = modalEl.querySelector('input[name="' + b.dataset.eye + '"]');
+        if (!inp) return;
+        const showing = inp.type === 'text';
+        inp.type = showing ? 'password' : 'text';
+        b.textContent = showing ? '👁' : '🙈';
+        b.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+      });
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && modalEl.getAttribute('aria-hidden') === 'false') closeModal();
@@ -262,6 +276,11 @@
     modalEl.setAttribute('aria-hidden', 'true');
     modalOnSuccess = null;
   }
+  // Same shape as backend EMAIL_RE in main.py — at least 1 char before @, at least 2 chars
+  // for the domain label, dot, at least 2 chars for the TLD. Catches typos like trailing
+  // backslashes, missing TLDs, single-char domains.
+  const EMAIL_RE = /^[^@\s]+@[^@\s.]{2,}\.[^@\s]{2,}$/;
+
   async function handleSubmit(form) {
     const data = new FormData(form);
     const mode = modalEl.dataset.mode;
@@ -270,6 +289,10 @@
     const errEl = modalEl.querySelector('.ag-modal-error');
     errEl.textContent = '';
     if (!email) { errEl.textContent = 'Email is required.'; return; }
+    if (!EMAIL_RE.test(email)) {
+      errEl.textContent = "That doesn't look like a valid email. Format: name@example.com";
+      return;
+    }
     if (mode === 'signin' && !password) { errEl.textContent = 'Password is required to sign in.'; return; }
 
     const submitBtn = modalEl.querySelector('.ag-submit');

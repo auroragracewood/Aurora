@@ -133,6 +133,21 @@
 }
 .ag-field input:focus { outline: 2px solid var(--ag-blueberry); outline-offset: 1px; }
 
+/* Password row — input + eye-toggle button on its right edge. */
+.ag-pw-row { position: relative; display: flex; align-items: center; }
+.ag-pw-row input { flex: 1; padding-right: 46px; }
+.ag-eye-btn {
+  position: absolute; right: 6px;
+  width: 36px; height: 36px;
+  background: transparent; border: 0;
+  color: rgba(246,247,251,.7);
+  cursor: pointer; font-size: 1.1rem;
+  border-radius: 8px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.ag-eye-btn:hover { background: rgba(255,255,255,.06); color: var(--gc-off-white); }
+.ag-eye-btn:focus { outline: 1px solid rgba(255,255,255,.3); outline-offset: 0; }
+
 .ag-checkline {
   display: flex; gap: 10px; align-items: flex-start;
   font-size: .82rem; color: rgba(246,247,251,.72);

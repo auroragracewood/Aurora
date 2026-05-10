@@ -56,6 +56,13 @@
     <select id="public_profile"><option value="0">Hidden</option><option value="1">Visible</option></select>
     <span></span>
   </div>
+  <div class="row"><span class="label">Show email publicly</span>
+    <select id="show_email_publicly">
+      <option value="0">Hidden (recommended)</option>
+      <option value="1">Visible</option>
+    </select>
+    <span class="hint" style="font-size:.74rem;color:var(--gc-dim)">Off by default. Toggling on warns first.</span>
+  </div>
   <div class="row"><span class="label">Theme</span>
     <select id="theme"></select>
     <span></span>
@@ -98,6 +105,18 @@
   AURORA.el("slug").value = me.slug || "";
   AURORA.el("bio").value = me.bio || "";
   AURORA.el("public_profile").value = String(me.public_profile || 0);
+  AURORA.el("show_email_publicly").value = String(me.show_email_publicly || 0);
+  AURORA.el("show_email_publicly").addEventListener("change", (ev) => {
+    if (ev.target.value === "1") {
+      const ok = confirm(
+        "Show email on public profile?\n\n" +
+        "Your email address will be visible to anyone who views your profile at /u/" +
+        (me.slug || me.id) + ". This may attract unwanted email or spam.\n\n" +
+        "Are you sure you want to make it public?"
+      );
+      if (!ok) ev.target.value = "0";
+    }
+  });
   if (me.role === "client") {
     AURORA.el("username").disabled = true;
     AURORA.el("username").classList.add("locked-input");
@@ -179,6 +198,7 @@ AURORA.el("save-btn").onclick = async () => {
       slug: AURORA.el("slug").value,
       bio: AURORA.el("bio").value,
       public_profile: parseInt(AURORA.el("public_profile").value),
+      show_email_publicly: parseInt(AURORA.el("show_email_publicly").value),
     };
     payload.theme = AURORA.el("theme").value;
     payload.links = (window.__getWorkingLinks ? window.__getWorkingLinks() : []).filter(l => l.url && l.url.trim());

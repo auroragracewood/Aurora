@@ -44,6 +44,7 @@
       <button class="modal-tab" data-tab="activity" onclick="switchTab('activity')">Activity</button>
       <button class="modal-tab" data-tab="messages" onclick="switchTab('messages')">Messages</button>
       <button class="modal-tab" data-tab="sessions" onclick="switchTab('sessions')">Sessions</button>
+      <button class="modal-tab" data-tab="email" onclick="switchTab('email')">Email events</button>
       <button class="modal-tab" data-tab="account" onclick="switchTab('account')">Account</button>
     </div>
     <div class="modal-body" id="modal-body">loading…</div>
@@ -108,7 +109,41 @@ function switchTab(tab) {
   if (tab === "activity") return renderActivityTab(body);
   if (tab === "messages") return renderMessagesTab(body);
   if (tab === "sessions") return renderSessionsTab(body);
+  if (tab === "email") return renderEmailEventsTab(body);
   if (tab === "account") return renderAccountTab(body);
+}
+
+// Search-bar helper — same pattern as the superuser modal. Each searchable tab
+// renders [search input + clear button] above the data, debounces input 300ms,
+// re-fetches with ?q= and re-renders. Server does the substring match (q= param
+// on /api/users/{uid}/{tab}).
+function renderTabWithSearch(body, fetchPath, placeholder, renderList) {
+  body.innerHTML =
+    '<div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">' +
+      '<input type="text" id="tab-q" placeholder="' + placeholder + '" ' +
+        'style="flex:1;background:rgba(0,0,0,.30);border:1px solid var(--gc-line);color:#f6f7fb;padding:8px 12px;border-radius:8px;font:inherit;font-size:.86rem">' +
+      '<button type="button" class="btn-secondary" id="tab-q-clear" style="padding:8px 12px;font-size:.78rem">Clear</button>' +
+    '</div>' +
+    '<div id="tab-results"><p style="color:var(--gc-dim);font-size:.86rem">Loading…</p></div>';
+  const input = AURORA.el("tab-q");
+  const results = AURORA.el("tab-results");
+  let timer = null;
+  async function go() {
+    const q = input.value.trim();
+    try {
+      const url = fetchPath + (q ? ("?q=" + encodeURIComponent(q)) : "");
+      const list = await AURORA.api("GET", url);
+      results.innerHTML = renderList(list, q);
+    } catch (e) {
+      results.innerHTML = '<p style="color:var(--gc-pink)">Failed to load: ' + e.message + '</p>';
+    }
+  }
+  input.addEventListener("input", () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(go, 300);
+  });
+  AURORA.el("tab-q-clear").addEventListener("click", () => { input.value = ""; go(); });
+  go();
 }
 
 async function renderProfileTab(body) {
@@ -191,27 +226,41 @@ async function removeRole(rid) {
 }
 
 async function renderActivityTab(body) {
-  const list = await AURORA.api("GET", "/api/users/" + MODAL_USER + "/activity");
-  body.innerHTML = list.length === 0
-    ? '<p style="color:var(--gc-dim);font-size:.86rem">No activity for this user.</p>'
-    : '<table><thead><tr><th>When</th><th>Action</th><th>Detail</th></tr></thead><tbody>' +
-      list.map(a => '<tr><td class="mono" style="font-size:.74rem">' + AURORA.fmtTs(a.created_at) + '</td><td>' + a.action + '</td><td class="mono" style="font-size:.74rem;color:var(--gc-dim)">' + (a.detail||"") + '</td></tr>').join("") +
-      '</tbody></table>';
+  renderTabWithSearch(body, "/api/users/" + MODAL_USER + "/activity",
+    "Search action / detail / role…",
+    (list, q) => list.length === 0
+      ? '<p style="color:var(--gc-dim);font-size:.86rem">' + (q ? 'No activity matches "' + q + '".' : 'No activity for this user.') + '</p>'
+      : '<table><thead><tr><th>When</th><th>Action</th><th>Detail</th></tr></thead><tbody>' +
+        list.map(a => '<tr><td class="mono" style="font-size:.74rem">' + AURORA.fmtTs(a.created_at) + '</td><td>' + a.action + '</td><td class="mono" style="font-size:.74rem;color:var(--gc-dim)">' + (a.detail||"") + '</td></tr>').join("") +
+        '</tbody></table>');
 }
 
 async function renderMessagesTab(body) {
-  const list = await AURORA.api("GET", "/api/users/" + MODAL_USER + "/messages");
-  body.innerHTML = list.length === 0
-    ? '<p style="color:var(--gc-dim);font-size:.86rem">No messages involving this user.</p>'
-    : list.map(m => {
-        const inbound = m.to_user === MODAL_USER;
-        const other = inbound ? (m.from_name + " (#" + m.from_user + ")") : (m.to_name + " (#" + m.to_user + ")");
-        return '<div class="msg-row">' +
-          '<div><div class="msg-from">' + (inbound ? '↓ FROM' : '↑ TO') + ' ' + other + '</div>' +
-          '<div class="msg-subject">' + (m.subject||"(no subject)") + '</div>' +
-          '<div class="msg-body">' + m.body + '</div></div>' +
-          '<div class="msg-meta">' + AURORA.fmtTs(m.created_at) + '</div></div>';
-      }).join("");
+  renderTabWithSearch(body, "/api/users/" + MODAL_USER + "/messages",
+    "Search subject / body / sender / recipient…",
+    (list, q) => list.length === 0
+      ? '<p style="color:var(--gc-dim);font-size:.86rem">' + (q ? 'No messages match "' + q + '".' : 'No messages involving this user.') + '</p>'
+      : list.map(m => {
+          const inbound = m.to_user === MODAL_USER;
+          const other = inbound ? (m.from_name + " (#" + m.from_user + ")") : (m.to_name + " (#" + m.to_user + ")");
+          return '<div class="msg-row">' +
+            '<div><div class="msg-from">' + (inbound ? '↓ FROM' : '↑ TO') + ' ' + other + '</div>' +
+            '<div class="msg-subject">' + (m.subject||"(no subject)") + '</div>' +
+            '<div class="msg-body">' + m.body + '</div></div>' +
+            '<div class="msg-meta">' + AURORA.fmtTs(m.created_at) + '</div></div>';
+        }).join(""));
+}
+
+async function renderEmailEventsTab(body) {
+  renderTabWithSearch(body, "/api/users/" + MODAL_USER + "/email-events",
+    "Search event / detail…",
+    (list, q) => list.length === 0
+      ? '<p style="color:var(--gc-dim);font-size:.86rem">' + (q ? 'No events match "' + q + '".' : 'No email events for this address.') + '</p>'
+      : '<table><thead><tr><th>When</th><th>Event</th><th>Detail</th></tr></thead><tbody>' +
+        list.map(e => '<tr><td class="mono" style="font-size:.74rem">' + AURORA.fmtTs(e.created_at) + '</td>' +
+          '<td><span class="role-tag" style="background:rgba(74,95,193,.20);color:#9aa9e8;border:1px solid rgba(74,95,193,.4);font-size:.72rem">' + e.event + '</span></td>' +
+          '<td class="mono" style="font-size:.74rem;color:var(--gc-dim)">' + (e.detail||"—") + '</td></tr>').join("") +
+        '</tbody></table>');
 }
 
 async function renderSessionsTab(body) {
@@ -219,12 +268,13 @@ async function renderSessionsTab(body) {
     body.innerHTML = '<p style="color:var(--gc-dim);font-size:.86rem">Sessions visible to superuser only.</p>';
     return;
   }
-  const list = await AURORA.api("GET", "/api/users/" + MODAL_USER + "/sessions");
-  body.innerHTML = list.length === 0
-    ? '<p style="color:var(--gc-dim);font-size:.86rem">No tracked sessions for this user.</p>'
-    : '<table><thead><tr><th>id</th><th>user agent</th><th>ip</th><th>last seen</th></tr></thead><tbody>' +
-      list.map(s => '<tr><td class="mono" style="font-size:.74rem">' + s.id + '</td><td>' + (s.user_agent||"—") + '</td><td>' + (s.ip||"—") + '</td><td>' + AURORA.fmtTs(s.last_seen_at) + '</td></tr>').join("") +
-      '</tbody></table>';
+  renderTabWithSearch(body, "/api/users/" + MODAL_USER + "/sessions",
+    "Search user agent / IP…",
+    (list, q) => list.length === 0
+      ? '<p style="color:var(--gc-dim);font-size:.86rem">' + (q ? 'No sessions match "' + q + '".' : 'No tracked sessions for this user.') + '</p>'
+      : '<table><thead><tr><th>id</th><th>user agent</th><th>ip</th><th>last seen</th></tr></thead><tbody>' +
+        list.map(s => '<tr><td class="mono" style="font-size:.74rem">' + s.id + '</td><td>' + (s.user_agent||"—") + '</td><td>' + (s.ip||"—") + '</td><td>' + AURORA.fmtTs(s.last_seen_at) + '</td></tr>').join("") +
+        '</tbody></table>');
 }
 
 async function renderAccountTab(body) {

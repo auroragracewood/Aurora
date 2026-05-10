@@ -356,6 +356,10 @@ def migrate_db():
             c.execute("ALTER TABLE users ADD COLUMN engaged_72h INTEGER DEFAULT 0")
         if "first_signin_at" not in users_cols:
             c.execute("ALTER TABLE users ADD COLUMN first_signin_at INTEGER")
+        if "show_email_publicly" not in users_cols:
+            # Default 0: privacy-by-default. User must explicitly opt-in to expose email
+            # on their public /u/{slug} page (with a warning at the toggle).
+            c.execute("ALTER TABLE users ADD COLUMN show_email_publicly INTEGER DEFAULT 0")
 
         c.commit()
 migrate_db()
@@ -421,7 +425,7 @@ def resolve_slug(slug):
             if r: return dict(r)
     return None
 
-_USER_COLS = "id, email, username, display_name, role, status, bio, avatar_url, slug, public_profile, profile_lock, admin_changed_at, theme, links_json"
+_USER_COLS = "id, email, username, display_name, role, status, bio, avatar_url, slug, public_profile, profile_lock, show_email_publicly, admin_changed_at, theme, links_json"
 
 def get_actor(request):
     """Returns the acting user dict, or None if no auth.
@@ -1872,7 +1876,9 @@ async def update_profile(request: Request):
     if "links" in data:
         data["links_json"] = json.dumps(_validate_links(data["links"]))
         del data["links"]
-    fields = {k: data[k] for k in ("display_name","username","bio","avatar_url","slug","public_profile","theme","links_json") if k in data}
+    if "show_email_publicly" in data:
+        data["show_email_publicly"] = 1 if data["show_email_publicly"] else 0
+    fields = {k: data[k] for k in ("display_name","username","bio","avatar_url","slug","public_profile","show_email_publicly","theme","links_json") if k in data}
     if not fields: return {"ok": True}
     sets = ", ".join(k + "=?" for k in fields)
     with db() as c:
@@ -2673,6 +2679,11 @@ def render_profile(u, roles, links, theme):
     slug_or_id = u.get("slug") or str(u["id"])
     bio = u.get("bio") or ""
     avatar = u.get("avatar_url") or ""
+    # Email is hidden by default — only shown if user explicitly opted in via the
+    # "Show email on public profile" toggle (with consent warning) on profile-edit.
+    email_html = ""
+    if u.get("show_email_publicly") and u.get("email"):
+        email_html = f'<p class="ag-public-email"><a href="mailto:{safe(u["email"])}" style="color:inherit;text-decoration:underline;text-decoration-color:rgba(127,127,127,.4)">{safe(u["email"])}</a></p>'
 
     if avatar:
         avatar_inner = f'<div class="ag-avatar" role="img" aria-label="{safe(name)}" style="background-image:url(\'{safe(avatar)}\')"></div>'
@@ -3139,6 +3150,7 @@ body {
         <h1 class="ag-name">{safe(name)}</h1>
         <p class="ag-handle">@{safe(slug_or_id)}</p>
         {primary_chip}
+        {email_html}
       </div>
     </header>
     {bio_html}

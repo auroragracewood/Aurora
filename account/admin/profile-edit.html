@@ -54,6 +54,13 @@
     <select id="public_profile"><option value="0">Hidden</option><option value="1">Visible</option></select>
     <span></span>
   </div>
+  <div class="row"><span class="label">Show email publicly</span>
+    <select id="show_email_publicly">
+      <option value="0">Hidden (recommended)</option>
+      <option value="1">Visible</option>
+    </select>
+    <span class="hint" style="font-size:.74rem;color:var(--gc-dim)">Off by default. Toggling on warns first.</span>
+  </div>
   <div class="row"><span class="label">Theme</span>
     <select id="theme"></select>
     <span></span>
@@ -96,6 +103,18 @@
   AURORA.el("slug").value = me.slug || "";
   AURORA.el("bio").value = me.bio || "";
   AURORA.el("public_profile").value = String(me.public_profile || 0);
+  AURORA.el("show_email_publicly").value = String(me.show_email_publicly || 0);
+  AURORA.el("show_email_publicly").addEventListener("change", (ev) => {
+    if (ev.target.value === "1") {
+      const ok = confirm(
+        "Show email on public profile?\n\n" +
+        "Your email address will be visible to anyone who views your profile at /u/" +
+        (me.slug || me.id) + ". This may attract unwanted email or spam.\n\n" +
+        "Are you sure you want to make it public?"
+      );
+      if (!ok) ev.target.value = "0";
+    }
+  });
   if (me.role === "client") {
     AURORA.el("username").disabled = true;
     AURORA.el("username").classList.add("locked-input");
@@ -177,6 +196,7 @@ AURORA.el("save-btn").onclick = async () => {
       slug: AURORA.el("slug").value,
       bio: AURORA.el("bio").value,
       public_profile: parseInt(AURORA.el("public_profile").value),
+      show_email_publicly: parseInt(AURORA.el("show_email_publicly").value),
     };
     payload.theme = AURORA.el("theme").value;
     payload.links = (window.__getWorkingLinks ? window.__getWorkingLinks() : []).filter(l => l.url && l.url.trim());
@@ -185,6 +205,51 @@ AURORA.el("save-btn").onclick = async () => {
     AURORA.setStatus("save-status", "Saved.", true);
   } catch (e) { AURORA.setStatus("save-status", e.message, false); }
 };
+</script>
+
+<section class="card" style="border-color:rgba(255,143,216,.35)">
+  <h2 style="color:#ff8fd8">Danger zone</h2>
+  <p style="color:rgba(246,247,251,.78);font-size:.92rem;line-height:1.55;margin:0 0 14px">
+    Delete your Aurora Gracewood account. Soft-deleted with a 30-day recovery window
+    — sign in within 30 days to restore. After that, this email is locked from re-signup
+    for 6 months.
+  </p>
+  <button class="btn" id="delete-account-btn" type="button"
+    style="background:transparent;border:1px solid #ff8fd8;color:#ff8fd8">Delete my account</button>
+  <div class="status" id="delete-status"></div>
+</section>
+<script>
+(async () => {
+  const me = await AURORA.api("GET", "/api/me");
+  const delBtn = AURORA.el("delete-account-btn");
+  if (!delBtn) return;
+  if (me.role === "superuser") {
+    delBtn.disabled = true;
+    delBtn.textContent = "Superuser cannot self-delete";
+    return;
+  }
+  delBtn.addEventListener("click", async () => {
+    if (!confirm(
+      "Delete your account?\n\n" +
+      "You'll be signed out everywhere. You can recover your account by signing in within 30 days.\n" +
+      "After that, this email is locked from re-signup for 6 months."
+    )) return;
+    const typed = prompt('Type DELETE to confirm permanent action (case-sensitive).');
+    if (typed !== "DELETE") {
+      AURORA.setStatus("delete-status", "Cancelled.", false);
+      return;
+    }
+    try {
+      delBtn.disabled = true; delBtn.textContent = "Deleting…";
+      await AURORA.api("POST", "/api/me/delete-account");
+      alert("Account deleted. You have 30 days to recover by signing in. Bye!");
+      window.location = "/awards/";
+    } catch (e) {
+      delBtn.disabled = false; delBtn.textContent = "Delete my account";
+      AURORA.setStatus("delete-status", "Error: " + e.message, false);
+    }
+  });
+})();
 </script>
 
   <section class="card">

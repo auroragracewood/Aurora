@@ -433,27 +433,30 @@ document.addEventListener("DOMContentLoaded", function () {
   setInterval(function () { pollMe(false); }, 8000);
 });
 
-// Nav "Menu" dropdown — toggle on click, close on outside-click, populate the
-// public-profile link from /api/me. One dropdown per page; if you ever need
-// multiples, generalize the queries.
+// Nav "Menu" pill — single element morphs from pill → tall rounded box on click.
+// Toggling data-state on .nav-menu drives all CSS transitions (border-radius,
+// label fade, items max-height + opacity). Click outside closes it.
 document.addEventListener("DOMContentLoaded", function () {
-  var btn = document.querySelector(".nav-menu-btn");
-  var items = document.querySelector(".nav-menu-items");
-  if (!btn || !items) return;
-  btn.addEventListener("click", function (e) {
+  var menu = document.querySelector(".nav-menu");
+  var toggle = menu && menu.querySelector(".nav-menu-toggle");
+  if (!menu || !toggle) return;
+
+  toggle.addEventListener("click", function (e) {
     e.stopPropagation();
-    var open = btn.getAttribute("aria-expanded") === "true";
-    btn.setAttribute("aria-expanded", open ? "false" : "true");
-    items.hidden = open;
+    var open = menu.getAttribute("data-state") === "open";
+    menu.setAttribute("data-state", open ? "closed" : "open");
+    toggle.setAttribute("aria-expanded", open ? "false" : "true");
   });
+
   document.addEventListener("click", function (e) {
-    if (!btn.contains(e.target) && !items.contains(e.target)) {
-      btn.setAttribute("aria-expanded", "false");
-      items.hidden = true;
+    if (!menu.contains(e.target)) {
+      menu.setAttribute("data-state", "closed");
+      toggle.setAttribute("aria-expanded", "false");
     }
   });
-  // Wire Public profile link to the current user's slug (or numeric id fallback).
-  var ppLink = items.querySelector("[data-public-profile-link]");
+
+  // Wire Public profile link to current user's slug (or numeric id fallback).
+  var ppLink = menu.querySelector("[data-public-profile-link]");
   if (ppLink) {
     AURORA.api("GET", "/api/me").then(function (me) {
       ppLink.href = "/u/" + (me.slug || me.id);

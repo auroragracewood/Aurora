@@ -14,15 +14,18 @@ ROOT = Path(__file__).parent / "account"
 # Canonical order: Profile, Edit profile, Submissions, Messages, Sessions,
 # Activity, Notifications, Settings, [Manage Users / Clients].
 # Plus the "Menu" dropdown overlay at the end.
-MENU_BLOCK = """    <div class="nav-menu">
-      <button type="button" class="nav-menu-btn" aria-haspopup="true" aria-expanded="false">Menu <span class="nav-menu-arrow">&#9662;</span></button>
-      <div class="nav-menu-items" hidden>
-        <a href="/">Home</a>
-        <a href="/awards/">Awards</a>
-        <a href="#" data-public-profile-link>Public profile</a>
-        <a href="/awards/#submit">Submit entry</a>
-      </div>
-    </div>"""
+MENU_BLOCK = """    <span class="nav-menu-wrap">
+      <span class="nav-menu-ghost">Menu &#9662;</span>
+      <span class="nav-menu" data-state="closed">
+        <button type="button" class="nav-menu-toggle" aria-haspopup="true" aria-expanded="false"><span class="nav-menu-label">Menu</span><span class="nav-menu-arrow">&#9662;</span></button>
+        <span class="nav-menu-list">
+          <a href="/">Home</a>
+          <a href="/awards/">Awards</a>
+          <a href="#" data-public-profile-link>Public profile</a>
+          <a href="/awards/#submit">Submit entry</a>
+        </span>
+      </span>
+    </span>"""
 
 NAVS = {
     "g-1vl00d": [

@@ -83,15 +83,18 @@
     <a data-realm-link href="/g-1vl00d/notifications">Notifications</a>
     <a data-realm-link href="/g-1vl00d/settings">Settings</a>
     <a data-realm-link href="/g-1vl00d/manage-users">Manage users</a>
-    <div class="nav-menu">
-      <button type="button" class="nav-menu-btn" aria-haspopup="true" aria-expanded="false">Menu <span class="nav-menu-arrow">&#9662;</span></button>
-      <div class="nav-menu-items" hidden>
-        <a href="/">Home</a>
-        <a href="/awards/">Awards</a>
-        <a href="#" data-public-profile-link>Public profile</a>
-        <a href="/awards/#submit">Submit entry</a>
-      </div>
-    </div>
+    <span class="nav-menu-wrap">
+      <span class="nav-menu-ghost">Menu &#9662;</span>
+      <span class="nav-menu" data-state="closed">
+        <button type="button" class="nav-menu-toggle" aria-haspopup="true" aria-expanded="false"><span class="nav-menu-label">Menu</span><span class="nav-menu-arrow">&#9662;</span></button>
+        <span class="nav-menu-list">
+          <a href="/">Home</a>
+          <a href="/awards/">Awards</a>
+          <a href="#" data-public-profile-link>Public profile</a>
+          <a href="/awards/#submit">Submit entry</a>
+        </span>
+      </span>
+    </span>
   </nav>
 
 <section class="card">

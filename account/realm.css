@@ -49,35 +49,71 @@ body {
 .nav a:hover { background: rgba(255,255,255,.07); border-color: var(--ag-light-pink); }
 .nav a.active { background: rgba(244,207,217,.12); border-color: var(--ag-light-pink); }
 
-/* Nav "Menu" dropdown — pill-shaped trigger; when open, expands downward as an
-   absolutely-positioned overlay that doesn't push content. The dropdown box mirrors
-   the pill's rounded radius for visual continuity. */
-.nav-menu { position: relative; display: inline-block; }
-.nav-menu-btn {
-  padding: 8px 14px; border-radius: 999px; border: 1px solid var(--gc-line);
-  background: transparent; color: var(--gc-off-white); cursor: pointer;
-  font-size: .82rem; font-weight: 700; font-family: inherit;
-  display: inline-flex; align-items: center; gap: 6px; line-height: 1;
+/* Nav "Menu" pill that GROWS DOWNWARD into a tall rounded box when clicked.
+   Single element (visually) morphs: border-radius pill → 22px, height grows to
+   include items, the word "Menu" fades out as the items fade in. The wrap's
+   ghost reserves the closed-pill's space in the nav flex; the actual .nav-menu
+   is absolute so growth doesn't push siblings. */
+.nav-menu-wrap { position: relative; display: inline-block; vertical-align: top; }
+.nav-menu-ghost {
+  display: inline-flex; visibility: hidden; align-items: center; gap: 6px;
+  padding: 8px 14px; border: 1px solid transparent;
+  font-family: inherit; font-size: .82rem; font-weight: 700; line-height: 1;
 }
-.nav-menu-btn:hover { background: rgba(255,255,255,.07); border-color: var(--ag-light-pink); }
-.nav-menu-btn[aria-expanded="true"] { background: rgba(244,207,217,.12); border-color: var(--ag-light-pink); }
-.nav-menu-arrow { font-size: .7rem; transition: transform .15s ease; line-height: 1; }
-.nav-menu-btn[aria-expanded="true"] .nav-menu-arrow { transform: rotate(180deg); }
-.nav-menu-items {
-  position: absolute; top: calc(100% + 6px); left: 0; min-width: 180px;
-  background: var(--gc-charcoal, #1c1f2a);
-  border: 1px solid var(--ag-light-pink);
-  border-radius: 22px; padding: 8px; z-index: 50;
-  box-shadow: 0 12px 32px rgba(0,0,0,.45);
-  display: flex; flex-direction: column; gap: 4px;
+.nav-menu {
+  /* Anchored to RIGHT edge of the wrap so when the items panel grows wider than
+     the closed pill, growth happens leftward — keeps it on-screen on mobile when
+     the pill is the rightmost nav item. */
+  position: absolute; top: 0; right: 0; min-width: 100%;
+  display: inline-flex; flex-direction: column; align-items: stretch;
+  border: 1px solid var(--gc-line); border-radius: 999px;
+  background: transparent; overflow: hidden; z-index: 10;
+  transition: border-radius .25s ease, background .18s ease, border-color .18s ease;
 }
-.nav-menu-items[hidden] { display: none; }
-.nav-menu-items a {
-  padding: 8px 14px; border-radius: 999px; border: 1px solid transparent;
+.nav-menu:hover { border-color: var(--ag-light-pink); }
+.nav-menu[data-state="open"] {
+  border-radius: 22px;
+  background: rgba(28,31,42,.97);
+  border-color: var(--ag-light-pink);
+  z-index: 30;
+}
+.nav-menu-toggle {
+  padding: 8px 14px; background: transparent; border: none;
+  color: var(--gc-off-white); cursor: pointer;
+  font-family: inherit; font-size: .82rem; font-weight: 700; line-height: 1;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.nav-menu-label {
+  transition: opacity .18s ease, max-width .25s ease;
+  overflow: hidden; max-width: 5em;
+}
+.nav-menu[data-state="open"] .nav-menu-label {
+  opacity: 0; max-width: 0;
+}
+.nav-menu-arrow {
+  font-size: .7rem; line-height: 1;
+  transition: transform .25s ease;
+}
+.nav-menu[data-state="open"] .nav-menu-arrow {
+  transform: rotate(180deg);
+}
+.nav-menu-list {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 0; opacity: 0; padding: 0 6px;
+  overflow: hidden;
+  transition: max-height .28s ease, opacity .2s ease .04s, padding .25s ease;
+}
+.nav-menu[data-state="open"] .nav-menu-list {
+  max-height: 320px; opacity: 1; padding: 2px 6px 8px;
+}
+.nav-menu-list a {
+  padding: 7px 12px; border-radius: 999px;
   color: var(--gc-off-white); text-decoration: none;
-  font-size: .82rem; font-weight: 700; white-space: nowrap;
+  font-family: inherit; font-size: .82rem; font-weight: 700;
+  white-space: nowrap; text-align: center;
 }
-.nav-menu-items a:hover { background: rgba(255,255,255,.07); border-color: var(--ag-light-pink); }
+.nav-menu-list a:hover { background: rgba(255,255,255,.07); }
 
 section.card {
   padding: 24px 28px;

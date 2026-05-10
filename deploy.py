@@ -24,6 +24,8 @@ DEPLOY_FILES = [
     "account/realm.css",
     "account/realm.js",
     "account/auth.js",
+    "account/auth.css",
+    "account/index.html",
     "account/g-1vl00d/superuser.html",
     "account/g-1vl00d/profile-edit.html",
     "account/g-1vl00d/settings.html",
@@ -58,7 +60,6 @@ DEPLOY_FILES = [
     "awards/config.js",
     "awards/earth-day-2k.jpg",
     "awards/earth-night-8k.jpg",
-    "account/auth.css",
     "assets/logo.png",
     "assets/awardlogo.png",
 ]

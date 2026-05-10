@@ -1226,6 +1226,18 @@ def serve_awards_sibling(filename: str):
     if "/" in safe or not f.exists() or not f.is_file(): raise HTTPException(404)
     return Response(f.read_bytes(), media_type=_media_for(safe), headers={"Cache-Control": "public, max-age=3600"})
 
+@app.get("/account/")
+@app.get("/account")
+def account_index():
+    """Serves account/index.html — the sign-in / sign-up landing.
+    Realm pages link here via `/account/?next=<original_path>` so users land
+    back where they came from after authenticating.
+    Without this route, the dev-override banner's "Sign in →" link 404'd."""
+    f = REALMS_DIR / "index.html"
+    if not f.exists():
+        raise HTTPException(404, "account/index.html missing on me-think")
+    return Response(f.read_text(encoding="utf-8"), media_type="text/html", headers=_NO_CACHE)
+
 @app.get("/account/auth.css")
 def auth_css():
     f = REALMS_DIR / "auth.css"

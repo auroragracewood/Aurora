@@ -277,7 +277,28 @@ async function saveAccount() {
   } catch (e) { AURORA.setStatus("m-account-status", e.message, false); }
 }
 
-loadUsers();
+// Gate: same pattern as profile-edit and superuser manage-users — block
+// every admin action when the visitor is on a ?as= dev override rather than a
+// real cookie session.
+(async () => {
+  const me = await AURORA.api("GET", "/api/me");
+  if (!me.signed_in) {
+    window.openUserModal = () => alert(
+      "Managing clients is disabled until you sign in with a real account session.\n\n" +
+      "Click 'Sign in →' in the banner above."
+    );
+    const banner = document.createElement("div");
+    banner.style.cssText = "background:linear-gradient(135deg,rgba(74,95,193,.20),rgba(244,207,217,.20));border:1px solid rgba(74,95,193,.40);border-radius:12px;padding:14px 18px;margin-bottom:18px;color:#f6f7fb;font-size:.92rem";
+    banner.innerHTML =
+      '<strong>You’re viewing as user_id=' + AURORA.asId + ' (dev override).</strong> ' +
+      'Managing clients is disabled until you sign in with a real account session. ' +
+      '<a href="/account/?next=' + encodeURIComponent(window.location.pathname) + '" style="color:#f4cfd9;font-weight:700">Sign in →</a>';
+    const layout = document.querySelector(".layout");
+    const firstCard = document.querySelector("section.card");
+    if (layout && firstCard) layout.insertBefore(banner, firstCard);
+  }
+  loadUsers();
+})();
 </script>
 
 </div>

@@ -279,7 +279,31 @@ async function saveAccount() {
   } catch (e) { AURORA.setStatus("m-account-status", e.message, false); }
 }
 
-loadUsers();
+// Gate: when not signed in via real cookie session, block all admin actions.
+// Row clicks open the modal, modal saves call the API — every path needs to be
+// closed off if the user is just on a ?as= dev override.
+(async () => {
+  const me = await AURORA.api("GET", "/api/me");
+  if (!me.signed_in) {
+    // Block the row-click → modal-open path. The modal never opens, so the
+    // forms inside it (profile/roles/etc.) are unreachable.
+    window.openUserModal = () => alert(
+      "Editing users is disabled until you sign in with a real account session.\n\n" +
+      "Click 'Sign in →' in the banner above."
+    );
+    // Banner — same pattern as profile-edit pages.
+    const banner = document.createElement("div");
+    banner.style.cssText = "background:linear-gradient(135deg,rgba(74,95,193,.20),rgba(244,207,217,.20));border:1px solid rgba(74,95,193,.40);border-radius:12px;padding:14px 18px;margin-bottom:18px;color:#f6f7fb;font-size:.92rem";
+    banner.innerHTML =
+      '<strong>You’re viewing as user_id=' + AURORA.asId + ' (dev override).</strong> ' +
+      'Managing users is disabled until you sign in with a real account session. ' +
+      '<a href="/account/?next=' + encodeURIComponent(window.location.pathname) + '" style="color:#f4cfd9;font-weight:700">Sign in →</a>';
+    const layout = document.querySelector(".layout");
+    const firstCard = document.querySelector("section.card");
+    if (layout && firstCard) layout.insertBefore(banner, firstCard);
+  }
+  loadUsers();
+})();
 </script>
 
 </div>

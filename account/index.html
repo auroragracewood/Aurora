@@ -54,7 +54,7 @@
   <div class="panel">
     <h1>Aurora Gracewood Account</h1>
     <div class="signed-out">
-      <p><strong>Free.</strong> One account works across everything I make. Sign in to continue, or create a new free account in a moment.</p>
+      <p><strong>Free.</strong> One account, everything under Aurora Gracewood. Sign in to continue, or create a new free account in a moment.</p>
       <div class="row">
         <button class="btn btn-primary" type="button" data-mode="signin">Sign In</button>
         <button class="btn btn-link" type="button" data-mode="signup">Sign Up Free</button>
@@ -74,16 +74,25 @@
   <script src="auth.js"></script>
   <script>
     // ?next=<path> — sent by realm.js when "Sign in" is clicked on a realm page. After
-    // sign-in succeeds, bounce back to that path so the user lands where they came from
-    // instead of stranded on /account/. Same-origin only — won't follow off-site URLs.
+    // sign-in succeeds, IF that path matches the role of the account that just signed
+    // in, bounce back. Otherwise (e.g., user signs in as superuser when ?next was an
+    // admin path) redirect to the role's natural home instead. Same-origin only.
     function nextParam() {
       try {
         const n = new URL(window.location.href).searchParams.get('next');
         if (!n) return null;
-        // Reject anything that doesn't start with '/' or that contains '//' (protocol-relative).
         if (!n.startsWith('/') || n.startsWith('//')) return null;
         return n;
       } catch (e) { return null; }
+    }
+    function pathAllowedForRole(path, role) {
+      if (path.startsWith('/g-1vl00d')) return role === 'superuser';
+      if (path.startsWith('/admin'))    return role === 'admin';
+      if (path.startsWith('/client'))   return role === 'client';
+      return true;  // /awards/, /u/*, /account/, etc. — public to any signed-in user
+    }
+    function roleHome(role) {
+      return ({ superuser: '/g-1vl00d/superuser', admin: '/admin/admin', client: '/client/client' })[role] || '/awards/';
     }
     function refresh() {
       const u = AGAuth.getUser();
@@ -91,11 +100,16 @@
       if (u) {
         document.querySelector('#who').textContent = u.name || u.email;
         const n = nextParam();
-        if (n) { window.location.href = n; return; }
+        if (n && pathAllowedForRole(n, u.role)) {
+          window.location.href = n;
+          return;
+        }
+        // Either no ?next=, or ?next= doesn't match the role we signed in as.
+        // Send the user to their natural realm home.
+        window.location.href = roleHome(u.role);
+        return;
       }
     }
-    // If signed in already (cookie session) and ?next= present, redirect immediately
-    // without forcing them to click anything.
     document.querySelectorAll('button[data-mode]').forEach((b) => {
       b.addEventListener('click', () => AGAuth.showModal({ mode: b.dataset.mode, onSuccess: refresh }));
     });

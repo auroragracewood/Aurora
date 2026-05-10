@@ -107,13 +107,15 @@
   AURORA.el("public_profile").value = String(me.public_profile || 0);
   AURORA.el("show_email_publicly").value = String(me.show_email_publicly || 0);
   AURORA.el("show_email_publicly").addEventListener("change", async (ev) => {
-    if (ev.target.value === "1") {
-      const ok = await AGUI.confirmDialog(
-        "Your email address will be visible to anyone who views your public profile at /u/" + (me.slug || me.id) + ". This may attract unwanted email or spam.",
-        { title: "Show email publicly?", yesLabel: "Yes, show it", noLabel: "Keep it hidden" }
-      );
-      if (!ok) ev.target.value = "0";
-    }
+    const sel = ev.target;
+    if (sel.value !== "1") return;
+    const ok = await AGUI.confirmDialog(
+      "Your email address will be visible to anyone who views your public profile at /u/" + (me.slug || me.id) + ". This may attract unwanted email or spam.",
+      { title: "Show email publicly?", yesLabel: "Yes, show it", noLabel: "Keep it hidden" }
+    );
+    if (ok === true) return;
+    sel.value = "0";
+    sel.selectedIndex = 0;
   });
   if (me.role === "client") {
     AURORA.el("username").disabled = true;

@@ -107,6 +107,19 @@ table th { color: var(--gc-copper); font-weight: 800; font-size: .72rem; letter-
 .msg-body { font-size: .88rem; color: rgba(246,247,251,.85); margin-top: 4px; white-space: pre-wrap; }
 .msg-meta { font-size: .72rem; color: var(--gc-dim); font-family: ui-monospace, monospace; }
 .msg-unread { color: var(--gc-cyan); font-weight: 800; }
+.msg-mark-btn {
+  background: transparent; border: 1px solid var(--gc-line);
+  color: var(--gc-cyan); padding: 1px 8px; border-radius: 999px;
+  font: inherit; font-size: .64rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; cursor: pointer; margin-left: 6px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.msg-mark-btn:hover { background: rgba(69,217,255,.10); border-color: var(--gc-cyan); }
+.msg-mark-btn:disabled { opacity: .5; cursor: not-allowed; }
+.msg-mark-btn.is-unmark { color: var(--gc-dim); }
+.msg-mark-btn.is-unmark:hover {
+  background: rgba(255,255,255,.05); border-color: rgba(246,247,251,.4); color: var(--gc-off-white);
+}
 
 @media (max-width: 720px) {
   .row { grid-template-columns: 1fr; gap: 4px; padding: 10px 0; }

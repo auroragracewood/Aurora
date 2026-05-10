@@ -196,6 +196,12 @@ window.AURORA = (function () {
     await api("PUT", "/api/messages/" + encodeURIComponent(messageId) + "/read");
     adjustUnreadIndicator(-1);
   }
+  async function markMessageUnread(messageId) {
+    /* Reverse of markMessageRead — flips a read message back to unread,
+       increments the banner indicator on success. */
+    await api("PUT", "/api/messages/" + encodeURIComponent(messageId) + "/unread");
+    adjustUnreadIndicator(+1);
+  }
 
   function renderBannerAuthControl(signedIn) {
     /* Adds a sign-in or sign-out button to the realm-banner on page load.
@@ -231,7 +237,7 @@ window.AURORA = (function () {
 
   return { asId, withAs, api, el, setStatus, fmtTs, avatarHTML, rolesChips, showFatal, showAccountChangedBanner,
            openBadgeModal, closeBadgeModal,
-           isSignedIn, setSignedIn, adjustUnreadIndicator, markMessageRead, renderBannerAuthControl };
+           isSignedIn, setSignedIn, adjustUnreadIndicator, markMessageRead, markMessageUnread, renderBannerAuthControl };
 })();
 
 document.addEventListener("DOMContentLoaded", function () {

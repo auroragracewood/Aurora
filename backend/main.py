@@ -894,11 +894,13 @@ def client_realm(page: str):
     if not f.exists(): raise HTTPException(404)
     return f.read_text(encoding="utf-8")
 
+_NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
+
 @app.get("/account/realm.css")
-def realm_css(): return Response((REALMS_DIR / "realm.css").read_text(encoding="utf-8"), media_type="text/css")
+def realm_css(): return Response((REALMS_DIR / "realm.css").read_text(encoding="utf-8"), media_type="text/css", headers=_NO_CACHE)
 
 @app.get("/account/realm.js")
-def realm_js(): return Response((REALMS_DIR / "realm.js").read_text(encoding="utf-8"), media_type="application/javascript")
+def realm_js(): return Response((REALMS_DIR / "realm.js").read_text(encoding="utf-8"), media_type="application/javascript", headers=_NO_CACHE)
 
 # ============== PUBLIC PROFILE ==============
 
@@ -1228,18 +1230,15 @@ def serve_awards_sibling(filename: str):
 def auth_css():
     f = REALMS_DIR / "auth.css"
     if not f.exists(): raise HTTPException(404)
-    return Response(f.read_text(encoding="utf-8"), media_type="text/css")
+    return Response(f.read_text(encoding="utf-8"), media_type="text/css", headers=_NO_CACHE)
 
 @app.get("/account/auth.js")
 def auth_js():
-    # auth.js is referenced by awards/index.html but not yet implemented locally.
-    # Returning an empty stub keeps the page from 404-ing on the script tag and
-    # allows the auth-chip slot to remain empty (app.js handles a missing chip gracefully).
     f = REALMS_DIR / "auth.js"
     if f.exists():
-        return Response(f.read_text(encoding="utf-8"), media_type="application/javascript")
+        return Response(f.read_text(encoding="utf-8"), media_type="application/javascript", headers=_NO_CACHE)
     return Response("/* auth.js: stub — auth chip not yet implemented */",
-                    media_type="application/javascript")
+                    media_type="application/javascript", headers=_NO_CACHE)
 
 @app.get("/assets/{filename}")
 def serve_root_asset(filename: str):
@@ -1434,6 +1433,17 @@ def mark_read(mid: int, request: Request):
     if not u: raise HTTPException(401)
     with db() as c:
         c.execute("UPDATE messages SET read_at = ? WHERE id = ? AND to_user = ?", (int(time.time()), mid, u["id"]))
+        c.commit()
+    return {"ok": True}
+
+@app.put("/api/messages/{mid}/unread")
+def mark_unread(mid: int, request: Request):
+    """Reverse of /read — flips read_at back to NULL so the message shows as UNREAD again.
+    Only the recipient (to_user) can toggle their own messages' read state."""
+    u = get_actor(request)
+    if not u: raise HTTPException(401)
+    with db() as c:
+        c.execute("UPDATE messages SET read_at = NULL WHERE id = ? AND to_user = ?", (mid, u["id"]))
         c.commit()
     return {"ok": True}
 

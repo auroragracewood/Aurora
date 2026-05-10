@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Messages · Aurora Gracewood</title>
+<link rel="icon" type="image/png" href="/assets/logo.png" />
 <link rel="stylesheet" href="/account/realm.css" />
 <script src="/account/realm.js"></script>
 
@@ -36,42 +37,64 @@
   <div id="messages-list">loading…</div>
 </section>
 <script>
+function renderMetaCell(m, inbound) {
+  // Compose the meta column for one message: timestamp + read state pill + toggle button (inbound only).
+  const ts = AURORA.fmtTs(m.created_at);
+  if (!inbound) return ts;
+  if (m.read_at) {
+    return ts + '<br/><span class="msg-readstamp" style="color:var(--gc-dim)">read ' + AURORA.fmtTs(m.read_at) + '</span>' +
+           ' <button class="msg-mark-btn is-unmark" data-unmark="' + m.id + '" type="button" title="Mark as unread">↩ unread</button>';
+  }
+  return ts + '<br/><span class="msg-unread">UNREAD</span>' +
+         ' <button class="msg-mark-btn" data-mark="' + m.id + '" type="button" title="Mark as read">✓ read</button>';
+}
+
+function wireRow(row, m) {
+  // Bind both mark and unmark buttons; on success, swap the meta cell to reflect the new state.
+  const inbound = m.to_user == AURORA.asId;
+  row.querySelectorAll("[data-mark]").forEach(b => b.addEventListener("click", async () => {
+    b.disabled = true; const orig = b.textContent; b.textContent = "…";
+    try {
+      await AURORA.markMessageRead(m.id);
+      m.read_at = Math.floor(Date.now() / 1000);
+      row.querySelector(".msg-meta").innerHTML = renderMetaCell(m, inbound);
+      wireRow(row, m);  // rebind the new (un-)mark button that just appeared
+    } catch (err) {
+      b.disabled = false; b.textContent = orig;
+      alert("Couldn't mark as read: " + (err.message || err));
+    }
+  }));
+  row.querySelectorAll("[data-unmark]").forEach(b => b.addEventListener("click", async () => {
+    b.disabled = true; const orig = b.textContent; b.textContent = "…";
+    try {
+      await AURORA.markMessageUnread(m.id);
+      m.read_at = null;
+      row.querySelector(".msg-meta").innerHTML = renderMetaCell(m, inbound);
+      wireRow(row, m);
+    } catch (err) {
+      b.disabled = false; b.textContent = orig;
+      alert("Couldn't mark as unread: " + (err.message || err));
+    }
+  }));
+}
+
 async function loadMessages() {
   const list = await AURORA.api("GET", "/api/messages");
   const e = AURORA.el("messages-list");
   if (list.length === 0) { e.innerHTML = '<p style="color:var(--gc-dim)">No messages yet.</p>'; return; }
   e.innerHTML = list.map(m => {
     const inbound = m.to_user == AURORA.asId;
-    const unread = inbound && !m.read_at;
-    const markBtn = unread
-      ? '<button class="msg-mark-btn" data-mark="' + m.id + '" type="button" title="Mark as read">✓ Mark read</button>'
-      : '';
     return '<div class="msg-row" data-mid="' + m.id + '"><div>' +
       '<div class="msg-from">' + (inbound ? '↓ FROM' : '↑ TO') + ' <span class="role-tag ' + (inbound ? m.from_role : m.to_role) + '">' + (inbound ? m.from_role : m.to_role) + '</span> ' + (inbound ? m.from_name : m.to_name) + ' (#' + (inbound ? m.from_user : m.to_user) + ')</div>' +
       '<div class="msg-subject">' + (m.subject || "(no subject)") + '</div>' +
       '<div class="msg-body">' + m.body + '</div>' +
-      '</div><div class="msg-meta">' + AURORA.fmtTs(m.created_at) + (m.read_at ? '<br/>read' : (inbound ? '<br/><span class="msg-unread">UNREAD</span> ' + markBtn : '')) + '</div></div>';
+      '</div><div class="msg-meta">' + renderMetaCell(m, inbound) + '</div></div>';
   }).join("");
-  // Wire mark-read buttons. Each click calls the API, decrements the banner indicator,
-  // and updates the row UI in-place without a full reload (so scroll position is preserved).
-  e.querySelectorAll("[data-mark]").forEach(b => b.addEventListener("click", async () => {
-    const mid = b.getAttribute("data-mark");
-    b.disabled = true; b.textContent = "…";
-    try {
-      await AURORA.markMessageRead(mid);
-      const row = b.closest(".msg-row");
-      if (row) {
-        const unreadPill = row.querySelector(".msg-unread");
-        if (unreadPill) unreadPill.remove();
-        b.remove();
-        const meta = row.querySelector(".msg-meta");
-        if (meta && !meta.textContent.includes("read")) meta.insertAdjacentHTML("beforeend", "<br/>read");
-      }
-    } catch (e) {
-      b.disabled = false; b.textContent = "✓ Mark read";
-      alert("Couldn't mark as read: " + e.message);
-    }
-  }));
+  // Wire each row's buttons against its message object so toggle state stays in sync.
+  list.forEach(m => {
+    const row = e.querySelector('.msg-row[data-mid="' + m.id + '"]');
+    if (row) wireRow(row, m);
+  });
 }
 AURORA.el("send").onclick = async () => {
   try {

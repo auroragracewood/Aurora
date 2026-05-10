@@ -1525,9 +1525,17 @@ def realm_js(): return Response((REALMS_DIR / "realm.js").read_text(encoding="ut
 _NOCACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
 
 @app.get("/u/{slug}", response_class=HTMLResponse)
-def public_profile(slug: str):
+def public_profile(slug: str, request: Request):
     u = resolve_slug(slug)
-    if not u or not u.get("public_profile") or u.get("profile_lock"):
+    if not u:
+        return HTMLResponse(render_404(), status_code=404, headers=_NOCACHE)
+    # Owners can ALWAYS view their own profile (even when hidden) so the "Public
+    # profile" link in the nav menu always works — the banner makes the hidden
+    # state obvious. Strangers viewing a hidden/locked profile still get 404.
+    actor = get_actor(request)
+    is_owner = bool(actor and actor.get("id") == u["id"])
+    is_hidden = (not u.get("public_profile")) or u.get("profile_lock")
+    if is_hidden and not is_owner:
         return HTMLResponse(render_404(), status_code=404, headers=_NOCACHE)
     with db() as c:
         roles = [dict(r) for r in c.execute(
@@ -1539,7 +1547,10 @@ def public_profile(slug: str):
         try: links = json.loads(u["links_json"])
         except Exception: links = []
     theme = THEMES.get(u.get("theme") or DEFAULT_THEME, THEMES[DEFAULT_THEME])
-    return HTMLResponse(render_profile(u, roles, links, theme), headers=_NOCACHE)
+    return HTMLResponse(
+        render_profile(u, roles, links, theme, owner_preview=is_owner and is_hidden),
+        headers=_NOCACHE,
+    )
 
 # ============== API ==============
 
@@ -2729,7 +2740,7 @@ def commit_to_github(path, content, commit_msg):
 # no longer called for per-user SVGs.
 
 
-def render_profile(u, roles, links, theme):
+def render_profile(u, roles, links, theme, owner_preview=False):
     safe = html_mod.escape
     name = u.get("display_name") or u.get("username") or ""
     slug_or_id = u.get("slug") or str(u["id"])
@@ -2899,6 +2910,38 @@ body {
   justify-content: center;
   padding: 48px 20px 32px;
 }
+
+/* Owner-preview banner — shown only to the profile's owner when their profile is
+   hidden. Strangers never see this; the route 404s them. */
+.ag-owner-banner {
+  margin: 16px auto 0;
+  max-width: 720px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, rgba(244,207,217,.16), rgba(74,95,193,.14));
+  border: 1px solid var(--ag-light-pink, #f4cfd9);
+  color: var(--ag-page-fg, #08101b);
+  font-size: .9rem;
+  font-weight: 500;
+  line-height: 1.45;
+  border-radius: 14px;
+}
+.ag-owner-icon { font-size: 1.1rem; flex-shrink: 0; }
+.ag-owner-text { flex: 1 1 280px; }
+.ag-owner-cta {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 700;
+  padding: 6px 12px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.ag-owner-cta:hover { background: rgba(0,0,0,.06); }
+:root.ag-dark .ag-owner-cta:hover { background: rgba(255,255,255,.08); }
 
 /* Wider portrait card. The card asserts its theme colors explicitly so it
    doesn't inherit page (light/dark) text color when those modes flip. */
@@ -3180,6 +3223,34 @@ body {
     else:
         awards_html = ""
 
+    # Owner-preview banner: shown ONLY when the route grants the signed-in owner
+    # access to their own hidden profile. Strangers never see this banner because
+    # they can't reach this code path (the route 404s them upstream).
+    if owner_preview:
+        # Determine which condition is hiding the profile so the banner can offer
+        # the right action. profile_lock takes precedence (admin lock; user can't
+        # toggle it themselves). Otherwise it's the user's own visibility toggle.
+        if u.get("profile_lock"):
+            reason = "Your profile is locked by an administrator. Only you can see it. Contact support to request a review."
+            cta_html = ""
+        else:
+            reason = "This profile is hidden — only you can see it right now. Toggle 'Public profile' to Visible on your Edit profile page to share."
+            edit_path = (
+                "/g-1vl00d/profile-edit" if u.get("role") == "superuser" else
+                "/admin/profile-edit"    if u.get("role") == "admin"     else
+                "/client/profile-edit"
+            )
+            cta_html = f'<a href="{edit_path}" class="ag-owner-cta">Open Edit profile &rarr;</a>'
+        owner_preview_banner = (
+            '<div class="ag-owner-banner" role="status">'
+            f'<span class="ag-owner-icon" aria-hidden="true">&#128274;</span>'
+            f'<span class="ag-owner-text">{html_mod.escape(reason)}</span>'
+            f'{cta_html}'
+            '</div>'
+        )
+    else:
+        owner_preview_banner = ""
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -3199,6 +3270,7 @@ body {
 <style>{css}</style>
 </head>
 <body>
+{owner_preview_banner}
 <main class="ag-page">
   <div class="ag-card-container">
     <header class="ag-header">

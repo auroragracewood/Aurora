@@ -1431,12 +1431,22 @@ async def api_delete_account(request: Request):
 
 @app.get("/")
 def home():
-    """Apex of aurora-gracewood.com: redirect to the awards landing.
-    The old `site/index.html` signup-card splash is gone (was leaking sign-in UI onto a
-    public page via GitHub Pages mirror at aurora-gracewood.com/site/). Auth flow is now
-    initiated via /awards/ (or directly via the AGAuth modal on any page that has it)."""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse("/awards/", status_code=302)
+    """Apex of aurora-gracewood.com: serve the splash page (CSS-driven aurora curtains,
+    moon, clouds, forest treeline). The Enter button on the splash sends users to /awards/.
+    The previous `RedirectResponse` to /awards/ skipped the splash entirely — losing the
+    intended landing visuals — and is replaced with serving the file directly."""
+    f = ROOT / "index.html"
+    if not f.exists(): raise HTTPException(404, "Splash index.html missing")
+    return HTMLResponse(f.read_text(encoding="utf-8"),
+                        headers={"Cache-Control": "public, max-age=300"})
+
+@app.get("/splash.css")
+def serve_splash_css():
+    """The splash page references this stylesheet at the root path."""
+    f = ROOT / "splash.css"
+    if not f.exists(): raise HTTPException(404)
+    return Response(f.read_text(encoding="utf-8"), media_type="text/css",
+                    headers={"Cache-Control": "public, max-age=3600"})
 
 @app.get("/g-1vl00d/{page}", response_class=HTMLResponse)
 def superuser_realm(page: str):

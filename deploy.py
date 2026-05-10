@@ -50,7 +50,6 @@ DEPLOY_FILES = [
     "account/client/submissions.html",
     "start-aurora.bat",
     # Badge artwork assets (served via /awards/asset/* and /awards/badge-asset/*)
-    "awards/badDB/assets/mark.svg",
     "awards/badDB/badges/starter/starter.png",
     # Awards landing page + its dependencies (served via /awards/, /awards/{file}, /assets/, /account/auth.css)
     "awards/index.html",
@@ -58,10 +57,22 @@ DEPLOY_FILES = [
     "awards/app.js",
     "awards/bg.js",
     "awards/config.js",
-    "awards/earth-day-2k.jpg",
-    "awards/earth-night-8k.jpg",
     "assets/logo.png",
     "assets/awardlogo.png",
+    # Splash page (apex /) + its assets
+    "index.html",
+    "splash.css",
+    "assets/moon-map.jpg",
+    "assets/treeline.png",
+]
+
+# Heavy assets that almost never change — Earth textures, the badge mark SVG.
+# Excluded from default deploys to save 10-15 seconds per deploy of base64-over-SSH
+# transfer time. Run `python deploy.py --with-assets` to push them when they change.
+HEAVY_ASSET_FILES = [
+    "awards/earth-day-2k.jpg",     # ~460 KB — body background day texture
+    "awards/earth-night-8k.jpg",   # ~3 MB — body background night texture
+    "awards/badDB/assets/mark.svg",  # ~660 KB — badge mark, embedded as data URI in every badge render
 ]
 
 
@@ -91,11 +102,16 @@ def transfer(rel, content_bytes):
 
 
 def main():
+    with_assets = "--with-assets" in sys.argv
+    files = list(DEPLOY_FILES)
+    if with_assets:
+        files += HEAVY_ASSET_FILES
+        print("(--with-assets passed: also pushing Earth textures + mark.svg)")
     print(f"Local root:  {LOCAL_ROOT}")
     print(f"Remote root: {SSH}:{REMOTE_ROOT}")
     print()
     print("=== Transferring files ===")
-    for rel in DEPLOY_FILES:
+    for rel in files:
         local = LOCAL_ROOT / rel.replace("/", "\\")
         if not local.exists():
             print(f"  SKIP {rel} (not on D:/)")

@@ -87,9 +87,9 @@
     </div>
     <span></span>
   </div>
-  <div class="row" id="public-profile-link-row" style="display:none"><span class="label">Public URL</span>
+  <div class="row" id="public-profile-link-row"><span class="label">Public URL</span>
     <a id="public-profile-link" href="#" target="_blank">/u/...</a>
-    <span></span>
+    <span class="hint" id="public-profile-link-hint" style="margin:0 0 0 10px"></span>
   </div>
     <div style="margin-top:14px"><button class="btn" id="save-btn">Save changes</button></div>
   <div class="status" id="save-status"></div>
@@ -229,13 +229,18 @@
     renderLinks();
   };
 
-  // Public URL link (only if public)
-  if (me.public_profile && !me.profile_lock) {
+  // Public URL is always shown so users can see and copy their slug. The link
+  // works regardless of public_profile state — hidden profiles render the
+  // owner-preview view (with a "Hidden" banner) when the owner clicks through.
+  {
     const slug = me.slug || me.id;
     const a = AURORA.el("public-profile-link");
     a.href = "/u/" + slug;
-    a.textContent = "/u/" + slug + " (open)";
-    AURORA.el("public-profile-link-row").style.display = "";
+    a.textContent = "/u/" + slug;
+    const hint = AURORA.el("public-profile-link-hint");
+    if (me.profile_lock) hint.textContent = "(locked by admin)";
+    else if (!me.public_profile) hint.textContent = "(only you can see it)";
+    else hint.textContent = "";
   }
   // Expose workingLinks getter on window so save handler can read it
   window.__getWorkingLinks = () => workingLinks;

@@ -50,28 +50,45 @@ window.AURORA = (function () {
         (r.emoji || "") + " " + r.role_name + (r.year ? " " + r.year : "") + '</span>';
     }).join("") + '</div>';
   }
-  function showAuthRequired() {
-    /* Full-screen frost + centered "Sign in" panel. Used when /api/me 401s (no
-       cookie session). Replaces the older leaky banner that exposed test user IDs
-       and pointed at internal me-think URLs. Idempotent — only renders once. */
+  function actorRoleHome(role) {
+    return ({ superuser: '/g-1vl00d/superuser', admin: '/admin/admin', client: '/client/client' })[role] || '/awards/';
+  }
+
+  function showAuthRequired(actorRole) {
+    /* Full-screen frost + centered CTA. Two modes:
+         actorRole undefined → not signed in → "Sign in required"
+         actorRole defined   → signed in but wrong realm for that role → "Wrong realm"
+       Idempotent — only renders once. Locks scroll so the page can't be navigated
+       underneath. No leaks of internal IDs or hostnames. */
     if (document.getElementById("aurora-auth-required")) return;
     const path = window.location.pathname;
     const realmName =
       path.startsWith("/g-1vl00d") ? "Superuser" :
       path.startsWith("/admin")    ? "Admin"     :
       path.startsWith("/client")   ? "Client"    : "Aurora Gracewood";
+    let title, body, ctaHref, ctaText;
+    if (actorRole) {
+      title = "Wrong realm";
+      body = "The " + realmName + " realm is for " + realmName.toLowerCase() +
+             " accounts only. You're signed in as a " + actorRole + ".";
+      ctaHref = actorRoleHome(actorRole);
+      ctaText = "Go to your dashboard →";
+    } else {
+      title = "Sign in required";
+      body = "The " + realmName + " realm is private. Sign in to continue.";
+      ctaHref = "/account/?next=" + encodeURIComponent(path);
+      ctaText = "Sign in →";
+    }
     const overlay = document.createElement("div");
     overlay.id = "aurora-auth-required";
     overlay.innerHTML =
       '<div class="aurora-auth-required-card">' +
-        '<h2>Sign in required</h2>' +
-        '<p>The ' + realmName + ' realm is private. Sign in to continue.</p>' +
-        '<a class="aurora-auth-required-btn" href="/account/?next=' +
-          encodeURIComponent(path) + '">Sign in →</a>' +
+        '<h2>' + title + '</h2>' +
+        '<p>' + body + '</p>' +
+        '<a class="aurora-auth-required-btn" href="' + ctaHref + '">' + ctaText + '</a>' +
         '<div class="aurora-auth-required-home"><a href="/awards/">← Aurora Awards</a></div>' +
       '</div>';
     document.body.appendChild(overlay);
-    // Lock scroll on the underlying page so it really feels frozen.
     document.body.style.overflow = "hidden";
   }
 
@@ -279,6 +296,18 @@ document.addEventListener("DOMContentLoaded", function () {
         baselineChangedAt = me.admin_changed_at || 0;
         AURORA.setSignedIn(!!me.signed_in);
         AURORA.renderBannerAuthControl(!!me.signed_in);
+        // Role gate: each realm path is for one role only. Mismatch (e.g., signed-in
+        // admin trying to view /g-1vl00d/*) → frost overlay with "Wrong realm" copy.
+        // Superuser viewing /g-1vl00d, admin viewing /admin, client viewing /client all pass.
+        const path = window.location.pathname;
+        const expectedRole =
+          path.startsWith("/g-1vl00d") ? "superuser" :
+          path.startsWith("/admin")    ? "admin"     :
+          path.startsWith("/client")   ? "client"    : null;
+        if (expectedRole && me.role !== expectedRole) {
+          AURORA.showAuthRequired(me.role);
+          return;
+        }
         if (me.unread_messages && me.unread_messages > 0) {
           const banner = document.querySelector(".realm-banner");
           if (banner && !banner.querySelector(".unread-indicator")) {

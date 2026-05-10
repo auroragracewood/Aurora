@@ -278,6 +278,107 @@ window.AURORA = (function () {
            isSignedIn, setSignedIn, adjustUnreadIndicator, markMessageRead, markMessageUnread, renderBannerAuthControl };
 })();
 
+// =====================================================================
+// Themed dialog helpers (window.AGUI) — replaces native alert/confirm/prompt.
+// Defined here AND in auth.js so every page that loads either script gets them.
+// Last loaded wins; the implementations are identical so duplication is harmless.
+// =====================================================================
+(function () {
+  function toast(msg, opts) {
+    opts = opts || {};
+    const type = opts.type || 'info';
+    const ttl = opts.ttl != null ? opts.ttl : 4000;
+    let host = document.getElementById('ag-toast-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'ag-toast-host';
+      document.body.appendChild(host);
+    }
+    const t = document.createElement('div');
+    t.className = 'ag-toast ag-toast-' + type;
+    t.textContent = msg;
+    host.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('ag-toast-shown'));
+    setTimeout(() => {
+      t.classList.remove('ag-toast-shown');
+      setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 250);
+    }, ttl);
+  }
+  function _esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  }
+  function confirmDialog(msg, opts) {
+    opts = opts || {};
+    const yes = opts.yesLabel || 'Confirm';
+    const no = opts.noLabel || 'Cancel';
+    const title = opts.title || '';
+    const danger = !!opts.danger;
+    return new Promise(resolve => {
+      const ov = document.createElement('div');
+      ov.className = 'ag-confirm-overlay';
+      ov.innerHTML =
+        '<div class="ag-confirm-card" role="dialog" aria-modal="true">' +
+          (title ? '<h3 class="ag-confirm-title">' + _esc(title) + '</h3>' : '') +
+          '<div class="ag-confirm-msg">' + _esc(msg) + '</div>' +
+          '<div class="ag-confirm-actions">' +
+            '<button type="button" class="ag-confirm-no">' + _esc(no) + '</button>' +
+            '<button type="button" class="ag-confirm-yes' + (danger ? ' is-danger' : '') + '">' + _esc(yes) + '</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(ov);
+      function close(v) {
+        document.removeEventListener('keydown', onKey);
+        ov.remove();
+        resolve(v);
+      }
+      function onKey(e) { if (e.key === 'Escape') close(false); }
+      ov.querySelector('.ag-confirm-yes').addEventListener('click', () => close(true));
+      ov.querySelector('.ag-confirm-no').addEventListener('click', () => close(false));
+      document.addEventListener('keydown', onKey);
+      setTimeout(() => ov.querySelector('.ag-confirm-yes').focus(), 50);
+    });
+  }
+  function promptDialog(msg, opts) {
+    opts = opts || {};
+    const title = opts.title || '';
+    const placeholder = opts.placeholder || '';
+    const submit = opts.submitLabel || 'Submit';
+    const cancel = opts.cancelLabel || 'Cancel';
+    const initialValue = opts.value || '';
+    const danger = !!opts.danger;
+    return new Promise(resolve => {
+      const ov = document.createElement('div');
+      ov.className = 'ag-confirm-overlay';
+      ov.innerHTML =
+        '<div class="ag-confirm-card" role="dialog" aria-modal="true">' +
+          (title ? '<h3 class="ag-confirm-title">' + _esc(title) + '</h3>' : '') +
+          '<div class="ag-confirm-msg">' + _esc(msg) + '</div>' +
+          '<input type="text" class="ag-prompt-input" placeholder="' + _esc(placeholder) + '" autocomplete="off" value="' + _esc(initialValue) + '">' +
+          '<div class="ag-confirm-actions">' +
+            '<button type="button" class="ag-confirm-no">' + _esc(cancel) + '</button>' +
+            '<button type="button" class="ag-confirm-yes' + (danger ? ' is-danger' : '') + '">' + _esc(submit) + '</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(ov);
+      const input = ov.querySelector('.ag-prompt-input');
+      function close(v) {
+        document.removeEventListener('keydown', onKey);
+        ov.remove();
+        resolve(v);
+      }
+      function onKey(e) { if (e.key === 'Escape') close(null); }
+      ov.querySelector('.ag-confirm-yes').addEventListener('click', () => close(input.value));
+      ov.querySelector('.ag-confirm-no').addEventListener('click', () => close(null));
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') close(input.value);
+      });
+      document.addEventListener('keydown', onKey);
+      setTimeout(() => input.focus(), 50);
+    });
+  }
+  window.AGUI = { toast: toast, confirmDialog: confirmDialog, promptDialog: promptDialog };
+})();
+
 document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll("a[data-realm-link]").forEach(function (a) {
     a.href = AURORA.withAs(a.getAttribute("href"));

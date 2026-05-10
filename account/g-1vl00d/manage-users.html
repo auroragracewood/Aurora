@@ -223,7 +223,7 @@ async function removeRole(rid) {
   try {
     await AURORA.api("DELETE", "/api/users/" + MODAL_USER + "/roles/" + rid);
     renderRolesTab(AURORA.el("modal-body"));
-  } catch (e) { alert(e.message); }
+  } catch (e) { AGUI.toast("Couldn't remove role: " + e.message, { type: "error" }); }
 }
 
 async function renderActivityTab(body) {
@@ -336,9 +336,9 @@ async function saveAccount() {
   if (!me.signed_in) {
     // Block the row-click → modal-open path. The modal never opens, so the
     // forms inside it (profile/roles/etc.) are unreachable.
-    window.openUserModal = () => alert(
-      "Editing users is disabled until you sign in with a real account session.\n\n" +
-      "Click 'Sign in →' in the banner above."
+    window.openUserModal = () => AGUI.toast(
+      "Editing users is disabled until you sign in with a real account session. Use the Sign in link in the banner.",
+      { type: "info", ttl: 5000 }
     );
     // Banner — same pattern as profile-edit pages.
     const banner = document.createElement("div");

@@ -61,7 +61,7 @@ function wireRow(row, m) {
       wireRow(row, m);  // rebind the new (un-)mark button that just appeared
     } catch (err) {
       b.disabled = false; b.textContent = orig;
-      alert("Couldn't mark as read: " + (err.message || err));
+      AGUI.toast("Couldn't mark as read: " + (err.message || err), { type: "error" });
     }
   }));
   row.querySelectorAll("[data-unmark]").forEach(b => b.addEventListener("click", async () => {
@@ -73,7 +73,7 @@ function wireRow(row, m) {
       wireRow(row, m);
     } catch (err) {
       b.disabled = false; b.textContent = orig;
-      alert("Couldn't mark as unread: " + (err.message || err));
+      AGUI.toast("Couldn't mark as unread: " + (err.message || err), { type: "error" });
     }
   }));
 }

@@ -61,7 +61,7 @@
       <option value="0">Hidden (recommended)</option>
       <option value="1">Visible</option>
     </select>
-    <span class="hint" style="font-size:.74rem;color:var(--gc-dim)">Off by default. Toggling on warns first.</span>
+    <span></span>
   </div>
   <div class="row"><span class="label">Theme</span>
     <select id="theme"></select>
@@ -106,13 +106,11 @@
   AURORA.el("bio").value = me.bio || "";
   AURORA.el("public_profile").value = String(me.public_profile || 0);
   AURORA.el("show_email_publicly").value = String(me.show_email_publicly || 0);
-  AURORA.el("show_email_publicly").addEventListener("change", (ev) => {
+  AURORA.el("show_email_publicly").addEventListener("change", async (ev) => {
     if (ev.target.value === "1") {
-      const ok = confirm(
-        "Show email on public profile?\n\n" +
-        "Your email address will be visible to anyone who views your profile at /u/" +
-        (me.slug || me.id) + ". This may attract unwanted email or spam.\n\n" +
-        "Are you sure you want to make it public?"
+      const ok = await AGUI.confirmDialog(
+        "Your email address will be visible to anyone who views your public profile at /u/" + (me.slug || me.id) + ". This may attract unwanted email or spam.",
+        { title: "Show email publicly?", yesLabel: "Yes, show it", noLabel: "Keep it hidden" }
       );
       if (!ok) ev.target.value = "0";
     }

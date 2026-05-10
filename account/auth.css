@@ -156,6 +156,89 @@
   letter-spacing: .02em;
 }
 
+/* === Themed dialogs (window.AGUI.toast / .confirmDialog / .promptDialog) ===
+   Same as in realm.css so /awards/ + /account/ also get the themed dialogs. */
+#ag-toast-host {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex; flex-direction: column; gap: 10px;
+  pointer-events: none;
+  width: max-content; max-width: calc(100% - 48px);
+}
+.ag-toast {
+  background: rgba(28,31,42,.96);
+  border: 1px solid var(--gc-line, rgba(255,255,255,.12));
+  border-radius: 14px;
+  padding: 12px 18px;
+  color: var(--gc-off-white, #f6f7fb);
+  font-size: .9rem; font-weight: 600;
+  box-shadow: 0 12px 36px rgba(0,0,0,.45);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity .25s ease, transform .25s ease;
+  max-width: 480px;
+  pointer-events: auto;
+  letter-spacing: -.005em;
+}
+.ag-toast.ag-toast-shown { opacity: 1; transform: translateY(0); }
+.ag-toast-success { border-color: rgba(110,206,141,.55); color: #a3e3c1; }
+.ag-toast-error   { border-color: rgba(255,143,216,.55); color: #ff8fd8; }
+
+.ag-confirm-overlay {
+  position: fixed; inset: 0; z-index: 10001;
+  background: rgba(8,12,20,.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.ag-confirm-card {
+  background: rgba(28,31,42,.97);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  padding: 24px 26px;
+  max-width: 440px; width: 100%;
+  color: var(--gc-off-white, #f6f7fb);
+  box-shadow: 0 28px 80px rgba(0,0,0,.55);
+}
+.ag-confirm-title {
+  margin: 0 0 8px; color: var(--gc-cyan, #45d9ff);
+  font-size: 1.05rem; letter-spacing: -.01em;
+}
+.ag-confirm-msg {
+  color: rgba(246,247,251,.82); font-size: .9rem;
+  line-height: 1.55; margin: 0 0 18px;
+  white-space: pre-line;
+}
+.ag-prompt-input {
+  width: 100%; box-sizing: border-box;
+  background: rgba(0,0,0,.32); color: var(--gc-off-white, #f6f7fb);
+  border: 1px solid var(--gc-line, rgba(255,255,255,.12)); border-radius: 10px;
+  padding: 11px 14px; font: inherit; font-size: .95rem;
+  margin-bottom: 18px;
+}
+.ag-prompt-input:focus { outline: 2px solid var(--ag-blueberry, #4a5fc1); outline-offset: 1px; }
+.ag-confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.ag-confirm-actions button {
+  padding: 9px 18px; border-radius: 10px; font: inherit;
+  font-size: .88rem; font-weight: 700; cursor: pointer; border: 0;
+}
+.ag-confirm-no {
+  background: transparent; color: var(--gc-off-white, #f6f7fb);
+  border: 1px solid var(--gc-line, rgba(255,255,255,.12)) !important;
+}
+.ag-confirm-no:hover { background: rgba(255,255,255,.06); }
+.ag-confirm-yes {
+  background: linear-gradient(135deg, var(--ag-blueberry, #4a5fc1), var(--ag-light-pink, #f4cfd9));
+  color: #08101b;
+}
+.ag-confirm-yes:hover { filter: brightness(1.08); }
+.ag-confirm-yes.is-danger {
+  background: transparent; color: #ff8fd8; border: 1px solid #ff8fd8 !important;
+}
+.ag-confirm-yes.is-danger:hover { background: rgba(255,143,216,.10); }
+
 .ag-checkline {
   display: flex; gap: 10px; align-items: flex-start;
   font-size: .82rem; color: rgba(246,247,251,.72);

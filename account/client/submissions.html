@@ -115,12 +115,17 @@ function statusLabel(s) {
 }
 
 async function withdraw(sid) {
-  if (!confirm("Withdraw this submission? You can only withdraw before review begins.")) return;
+  const ok = await AGUI.confirmDialog(
+    "You can only withdraw before review begins. Once review starts, the submission stays in the queue and proceeds to scoring.",
+    { title: "Withdraw this submission?", yesLabel: "Withdraw", noLabel: "Keep it active", danger: true }
+  );
+  if (!ok) return;
   try {
     await AURORA.api("PUT", "/api/submissions/" + sid + "/status", { status: "withdrawn" });
+    AGUI.toast("Submission withdrawn.", { type: "success" });
     render();
   } catch (e) {
-    alert("Could not withdraw: " + e.message);
+    AGUI.toast("Could not withdraw: " + e.message, { type: "error" });
   }
 }
 

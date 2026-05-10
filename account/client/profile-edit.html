@@ -58,7 +58,7 @@
       <option value="0">Hidden (recommended)</option>
       <option value="1">Visible</option>
     </select>
-    <span class="hint" style="font-size:.74rem;color:var(--gc-dim)">Off by default. Toggling on warns first.</span>
+    <span></span>
   </div>
   <div class="row"><span class="label">Theme</span>
     <select id="theme"></select>
@@ -127,13 +127,11 @@
   AURORA.el("public_profile").value = String(me.public_profile || 0);
   AURORA.el("show_email_publicly").value = String(me.show_email_publicly || 0);
   // Warn the user when toggling email visibility ON. Off-by-default = privacy-first.
-  AURORA.el("show_email_publicly").addEventListener("change", (ev) => {
+  AURORA.el("show_email_publicly").addEventListener("change", async (ev) => {
     if (ev.target.value === "1") {
-      const ok = confirm(
-        "Show email on public profile?\n\n" +
-        "Your email address will be visible to anyone who views your profile at /u/" +
-        (me.slug || me.id) + ". This may attract unwanted email or spam.\n\n" +
-        "Are you sure you want to make it public?"
+      const ok = await AGUI.confirmDialog(
+        "Your email address will be visible to anyone who views your public profile at /u/" + (me.slug || me.id) + ". This may attract unwanted email or spam.",
+        { title: "Show email publicly?", yesLabel: "Yes, show it", noLabel: "Keep it hidden" }
       );
       if (!ok) ev.target.value = "0";
     }
@@ -146,24 +144,27 @@
       delBtn.textContent = "Superuser cannot self-delete";
     }
     delBtn.addEventListener("click", async () => {
-      if (!confirm(
-        "Delete your account?\n\n" +
-        "You'll be signed out everywhere. You can recover your account by signing in within 30 days.\n" +
-        "After that, this email is locked from re-signup for 6 months."
-      )) return;
-      const typed = prompt('Type DELETE to confirm permanent action (case-sensitive).');
+      const ok = await AGUI.confirmDialog(
+        "You'll be signed out everywhere. You can recover your account by signing in within 30 days. After that, this email is locked from re-signup for 6 months.",
+        { title: "Delete your account?", yesLabel: "Continue", noLabel: "Keep my account", danger: true }
+      );
+      if (!ok) return;
+      const typed = await AGUI.promptDialog(
+        "This action is permanent after 30 days. To confirm, type DELETE in the box below (uppercase).",
+        { title: "Final step", placeholder: "DELETE", submitLabel: "Delete account", cancelLabel: "Cancel", danger: true }
+      );
       if (typed !== "DELETE") {
-        AURORA.setStatus("delete-status", "Cancelled.", false);
+        AGUI.toast("Cancelled — your account is unchanged.", { type: "info" });
         return;
       }
       try {
         delBtn.disabled = true; delBtn.textContent = "Deleting…";
         await AURORA.api("POST", "/api/me/delete-account");
-        alert("Account deleted. You have 30 days to recover by signing in. Bye!");
-        window.location = "/awards/";
+        AGUI.toast("Account deleted. You have 30 days to recover by signing in.", { type: "success", ttl: 5000 });
+        setTimeout(() => { window.location = "/awards/"; }, 1200);
       } catch (e) {
         delBtn.disabled = false; delBtn.textContent = "Delete my account";
-        AURORA.setStatus("delete-status", "Error: " + e.message, false);
+        AGUI.toast("Couldn't delete: " + e.message, { type: "error" });
       }
     });
   }

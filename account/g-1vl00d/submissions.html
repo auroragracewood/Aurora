@@ -125,14 +125,19 @@ function statusLabel(s) {
 let allSubmissions = [];
 
 async function updateStatus(sid, newStatus, btn) {
-  const notes = prompt("Optional review notes (visible to client):", "") || null;
+  const notes = await AGUI.promptDialog(
+    "Optional — these notes are visible to the client when their status changes.",
+    { title: "Review notes (optional)", placeholder: "Leave blank or type a short note", submitLabel: "Save status", cancelLabel: "Cancel" }
+  );
+  if (notes === null) { btn.textContent = "Save"; return; }
   try {
     btn.disabled = true; btn.textContent = "saving…";
-    await AURORA.api("PUT", "/api/submissions/" + sid + "/status", { status: newStatus, notes });
+    await AURORA.api("PUT", "/api/submissions/" + sid + "/status", { status: newStatus, notes: notes || null });
     btn.textContent = "saved ✓";
+    AGUI.toast("Status updated.", { type: "success" });
     setTimeout(() => loadAndRender(), 700);
   } catch (e) {
-    alert("Save failed: " + e.message);
+    AGUI.toast("Save failed: " + e.message, { type: "error" });
     btn.disabled = false; btn.textContent = "Save";
   }
 }

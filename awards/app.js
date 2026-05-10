@@ -132,11 +132,11 @@ AURORA_CONFIG.submissionTypes.forEach((type, index) => {
           throw new Error(err.detail || ('HTTP ' + r.status));
         }
         const data = await r.json();
-        alert('Submission received. Track it under Account → Submissions.');
+        if (window.AGUI) AGUI.toast('Submission received. Track it under Account → Submissions.', { type: 'success', ttl: 5000 });
         form.reset();
         applyAuthState(form);  /* re-prefill name/email from /api/me after reset */
       } catch (e) {
-        alert('Could not submit: ' + (e.message || e));
+        if (window.AGUI) AGUI.toast('Could not submit: ' + (e.message || e), { type: 'error', ttl: 5000 });
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origLabel; }
         return;
       }

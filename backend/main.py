@@ -408,9 +408,51 @@ def grant_starter_badge(user_id, granted_by=None, reason="signup"):
     _ = existed_before  # keep variable defined for future hooks (e.g., welcome email on first grant)
 
 PERMISSIONS = {
-    "superuser": ["Manage all users","Promote / demote admins","Create / close award cycles","Review and score all submissions","Publish editorial content","Configure site settings","Override votes (Community Choice)","Issue refunds via Stripe","Modify award rubrics","Manage trophies pipeline","Access all subsidiary data","Export full database","Audit log access","Run database migrations"],
-    "admin":     ["Manage clients (read + suspend)","Review submissions","Score submissions","Draft editorial content","View notifications","View own activity","Send messages to clients","Send messages to superuser"],
-    "client":    ["Edit own profile","Submit work to award cycles","View own submissions","View own notifications","Send messages to admin/superuser","View public award winners"],
+    "superuser": [
+        "Manage all users (any role, any status)",
+        "Promote / demote between roles",
+        "Impersonate any user via the 'view as' query param",
+        "View every user's email lifecycle events (signup, verify, signin, deletion)",
+        "Search across any user's activity, messages, and sessions",
+        "Soft-delete and recover any user account",
+        "See the 72-hour engagement signal on any user (housekeeping)",
+        "Create / close award cycles",
+        "Review and score all submissions",
+        "Change submission status (Pending Review / Reviewing / Finalist / Honoree / Winner / Rejected / Withdrawn)",
+        "Publish editorial content",
+        "Configure site settings",
+        "Override votes (Community Choice)",
+        "Issue refunds via Stripe (when wired)",
+        "Modify award rubrics",
+        "Manage trophies pipeline",
+        "Access all subsidiary data",
+        "Export full database",
+        "Audit log access",
+        "Run database migrations",
+    ],
+    "admin": [
+        "Manage clients (view, edit profile, suspend, change roles)",
+        "Review and score submissions",
+        "Change submission status (Pending Review / Reviewing / Finalist / Honoree / Winner / Rejected)",
+        "Search a client's activity, messages, and sessions",
+        "View clients' email lifecycle events",
+        "Draft editorial content",
+        "View own notifications and activity",
+        "Send messages to clients and superuser",
+    ],
+    "client": [
+        "Edit own profile (display name, bio, avatar, theme, links, public visibility)",
+        "Toggle email visibility on public profile (with consent warning)",
+        "Submit work to award cycles",
+        "View own submissions and their status",
+        "Withdraw a pending submission",
+        "View own notifications and activity",
+        "Send messages to admin and superuser",
+        "Mark messages as read or unread",
+        "Recover own account within 30 days of deletion",
+        "Delete own account (30-day recovery + 6-month email lockout)",
+        "View public award winners",
+    ],
 }
 
 ROLE_EMOJI = {"Honoree":"🎗","Finalist":"🥈","Winner":"🏆","Partner":"🤝","Provider":"🤝","Sponsor":"🤝","Supporter":"❤","Voter":"❤","Fan":"❤","Actor":"🥽"}
@@ -774,6 +816,7 @@ def _post_signin_redirect(role):
 
 def _simple_page(title, message):
     return f"""<!doctype html><html><head><meta charset="utf-8"><title>{title} · Aurora Gracewood</title>
+<link rel="icon" type="image/png" href="/assets/logo.png">
 <style>body{{margin:0;background:linear-gradient(135deg,#1c1f2a,#0a0a0e);color:#f6f7fb;font-family:Inter,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}}.card{{background:rgba(28,31,42,.96);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:32px;max-width:440px}}h1{{color:#a3e3c1;margin:0 0 8px}}p{{color:rgba(246,247,251,.78);line-height:1.55}}a{{color:#4a5fc1}}</style></head>
 <body><div class="card"><h1>{title}</h1><p>{message}</p><p><a href="/awards/">Aurora Awards →</a></p></div></body></html>"""
 
@@ -3140,6 +3183,7 @@ body {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{safe(og_title)}</title>
+<link rel="icon" type="image/png" href="/assets/logo.png">
 <meta name="description" content="{safe(og_desc)}">
 <meta property="og:type" content="profile">
 <meta property="og:title" content="{safe(og_title)}">
@@ -3210,6 +3254,7 @@ def render_404():
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Not found · Aurora Gracewood</title>
+<link rel="icon" type="image/png" href="/assets/logo.png">
 <meta name="robots" content="noindex">
 <style>
 * { box-sizing: border-box; }

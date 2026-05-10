@@ -281,6 +281,13 @@ def migrate_db():
                      SET email = 'aandrew7.am@gmail.com'
                      WHERE id = 2 AND email = 'admin@aurora.local'""")
 
+        # 2026-05-09: Same pattern for the seeded test client (id=9100) — assign to the
+        # user's secondary gmail so they can sign up as the test client and exercise the
+        # client realm. Idempotent.
+        c.execute("""UPDATE users
+                     SET email = 'gracewoodaurora@gmail.com'
+                     WHERE id = 9100 AND email = 'client@aurora.local'""")
+
         # Retroactive grant: every existing user gets the Starter badge with frozen fields.
         # design_year still STARTER_DESIGN_YEAR; awardee_text and destination_url computed per user.
         # Starter badge funnels clicks to /awards/?from={slug} (decided 2026-05-08): when a

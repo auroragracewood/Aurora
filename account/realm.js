@@ -326,7 +326,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     } catch (err) {
       if (initial && err.status === 401) {
-        showAuthRequired();
+        AURORA.showAuthRequired();
       }
     }
   }

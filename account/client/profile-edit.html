@@ -128,21 +128,17 @@
   // restore <select> state across F5 refreshes and bfcache navigations, which can
   // override our initial assignment. We re-run this on `pageshow` so the *server*
   // truth wins over any browser-cached UI state.
-  function syncVisibilityDropdowns(reason) {
+  function syncVisibilityDropdowns() {
     const pp = me.public_profile ? 1 : 0;
     const se = me.show_email_publicly ? 1 : 0;
     const ppEl = AURORA.el("public_profile");
     const seEl = AURORA.el("show_email_publicly");
     ppEl.value = String(pp); ppEl.selectedIndex = pp;
     seEl.value = String(se); seEl.selectedIndex = se;
-    console.log("[AG sync " + (reason || "init") + "]",
-      "me.show_email_publicly=", me.show_email_publicly,
-      " seEl.value=", seEl.value, " seEl.selectedIndex=", seEl.selectedIndex,
-      " visible=", seEl.options[seEl.selectedIndex] && seEl.options[seEl.selectedIndex].textContent);
   }
-  syncVisibilityDropdowns("init");
-  window.addEventListener("pageshow", () => syncVisibilityDropdowns("pageshow"));
-  setTimeout(() => syncVisibilityDropdowns("delayed-100ms"), 100);
+  syncVisibilityDropdowns();
+  window.addEventListener("pageshow", syncVisibilityDropdowns);
+  setTimeout(syncVisibilityDropdowns, 100);
   // Warn the user when toggling email visibility ON. Off-by-default = privacy-first.
   AURORA.el("show_email_publicly").addEventListener("change", async (ev) => {
     const sel = ev.target;

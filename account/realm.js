@@ -50,6 +50,31 @@ window.AURORA = (function () {
         (r.emoji || "") + " " + r.role_name + (r.year ? " " + r.year : "") + '</span>';
     }).join("") + '</div>';
   }
+  function showAuthRequired() {
+    /* Full-screen frost + centered "Sign in" panel. Used when /api/me 401s (no
+       cookie session). Replaces the older leaky banner that exposed test user IDs
+       and pointed at internal me-think URLs. Idempotent — only renders once. */
+    if (document.getElementById("aurora-auth-required")) return;
+    const path = window.location.pathname;
+    const realmName =
+      path.startsWith("/g-1vl00d") ? "Superuser" :
+      path.startsWith("/admin")    ? "Admin"     :
+      path.startsWith("/client")   ? "Client"    : "Aurora Gracewood";
+    const overlay = document.createElement("div");
+    overlay.id = "aurora-auth-required";
+    overlay.innerHTML =
+      '<div class="aurora-auth-required-card">' +
+        '<h2>Sign in required</h2>' +
+        '<p>The ' + realmName + ' realm is private. Sign in to continue.</p>' +
+        '<a class="aurora-auth-required-btn" href="/account/?next=' +
+          encodeURIComponent(path) + '">Sign in →</a>' +
+        '<div class="aurora-auth-required-home"><a href="/awards/">← Aurora Awards</a></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    // Lock scroll on the underlying page so it really feels frozen.
+    document.body.style.overflow = "hidden";
+  }
+
   function showFatal(msg) {
     let box = document.getElementById("aurora-fatal");
     if (!box) {
@@ -235,7 +260,7 @@ window.AURORA = (function () {
     banner.appendChild(btn);
   }
 
-  return { asId, withAs, api, el, setStatus, fmtTs, avatarHTML, rolesChips, showFatal, showAccountChangedBanner,
+  return { asId, withAs, api, el, setStatus, fmtTs, avatarHTML, rolesChips, showFatal, showAuthRequired, showAccountChangedBanner,
            openBadgeModal, closeBadgeModal,
            isSignedIn, setSignedIn, adjustUnreadIndicator, markMessageRead, markMessageUnread, renderBannerAuthControl };
 })();
@@ -272,18 +297,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     } catch (err) {
       if (initial && err.status === 401) {
-        const path = window.location.pathname;
-        let realm = "superuser", validId = "1";
-        if (path.startsWith("/admin")) { realm = "admin"; validId = "2"; }
-        else if (path.startsWith("/client")) { realm = "client"; validId = "9100"; }
-        const goodUrl = path + "?as=" + validId;
-        AURORA.showFatal(
-          "<strong>User #" + AURORA.asId + " does not exist.</strong><br><br>" +
-          "This is the <em>" + realm + "</em> realm. Use this URL instead:<br>" +
-          "<a href=\"" + goodUrl + "\" style=\"color:#45d9ff;text-decoration:underline\">" +
-          "http://me-think:8000" + goodUrl + "</a><br><br>" +
-          "<small style=\"opacity:.7\">Test users: superuser=1, admin=2, client=9100</small>"
-        );
+        showAuthRequired();
       }
     }
   }

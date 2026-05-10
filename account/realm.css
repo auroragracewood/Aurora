@@ -121,6 +121,53 @@ table th { color: var(--gc-copper); font-weight: 800; font-size: .72rem; letter-
   background: rgba(255,255,255,.05); border-color: rgba(246,247,251,.4); color: var(--gc-off-white);
 }
 
+/* Auth-required frost overlay — full-screen blur over an unauthorized realm page.
+   Visible only when /api/me 401s (no cookie session). Strangers can't see anything
+   underneath; the only forward path is the centered Sign In button. */
+#aurora-auth-required {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(8,12,20,.62);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.aurora-auth-required-card {
+  background: rgba(28,31,42,.96);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  padding: 36px 32px;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  color: var(--gc-off-white);
+  box-shadow: 0 28px 80px rgba(0,0,0,.55);
+}
+.aurora-auth-required-card h2 {
+  margin: 0 0 12px; font-size: 1.4rem;
+  color: var(--gc-cyan); letter-spacing: -.01em;
+}
+.aurora-auth-required-card p {
+  margin: 0 0 24px;
+  color: rgba(246,247,251,.78); line-height: 1.55; font-size: .95rem;
+}
+.aurora-auth-required-btn {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--ag-blueberry, #4a5fc1), var(--ag-light-pink, #f4cfd9));
+  color: #08101b;
+  padding: 12px 30px; border-radius: 999px;
+  text-decoration: none; font-weight: 800; letter-spacing: .02em;
+  transition: filter .15s;
+}
+.aurora-auth-required-btn:hover { filter: brightness(1.08); }
+.aurora-auth-required-home {
+  margin-top: 20px; font-size: .82rem;
+}
+.aurora-auth-required-home a {
+  color: rgba(246,247,251,.6); text-decoration: none;
+}
+.aurora-auth-required-home a:hover { color: var(--ag-light-pink, #f4cfd9); text-decoration: underline; }
+
 @media (max-width: 720px) {
   .row { grid-template-columns: 1fr; gap: 4px; padding: 10px 0; }
   .permissions { grid-template-columns: 1fr; }

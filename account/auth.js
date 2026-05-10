@@ -1,58 +1,87 @@
 /* ============================================================
    Aurora Gracewood — shared auth module
    ============================================================
-   Stub-first: persists to localStorage. Pass-2 swaps in real
-   API calls without changing the public surface of this file.
-   Public surface (use these from any AG page):
+   Source-of-truth: server `users`/`sessions` tables, identified
+   client-side by the `ag_session` HttpOnly cookie set on
+   /api/signin or /api/verify success. ZERO localStorage / IndexedDB
+   usage — the only client-side state is an in-memory cache of the
+   last /api/me response, refreshed on every page load and after
+   each auth-changing action.
+
+   Public surface:
      AGAuth.isLoggedIn()              -> boolean
-     AGAuth.getUser()                 -> {name,email,...} | null
+     AGAuth.getUser()                 -> {name,email,role,username,slug,id} | null
      AGAuth.requireAuth(action, opts) -> if logged in, run action;
                                           else open modal, run on success
-     AGAuth.signOut()                 -> clear session, refresh chip
+     AGAuth.signOut()                 -> POST /api/signout, refresh chip
      AGAuth.installNav(slot)          -> mount the auth chip in `slot`
-     AGAuth.showModal(opts)           -> open modal directly (signin/signup)
-   No page reloads anywhere. Modal lifecycle is in-place.
+     AGAuth.showModal(opts)           -> open modal directly (signin/signup/forgot-password)
+     AGAuth.ready                     -> Promise<user|null>, resolves after first /api/me
    ============================================================ */
 
 (function () {
-  const STORAGE_KEY = 'ag_session_v1';
-  // The FastAPI backend (auth source of truth) lives at aurora-gracewood.com.
-  // From any apex page (or the awards page on either host) we can fetch /api/me there
-  // to learn whether the user has a real session cookie and what their role + slug are.
+  // FastAPI backend lives at the apex via Cloudflare Tunnel. Same-origin from
+  // every Aurora-Gracewood page, so /api/* fetches don't need CORS.
   const BACKEND_ORIGIN = 'https://aurora-gracewood.com';
 
-  function readSession() {
+  // In-memory cache of the last /api/me. Set by syncFromBackend(); cleared on
+  // signOut() or on a 401 from /api/me. Never persisted to disk.
+  let _currentUser = null;
+  let _readyResolve = null;
+  const _ready = new Promise((res) => { _readyResolve = res; });
+
+  function getUser() { return _currentUser; }
+  function isLoggedIn() { return !!_currentUser; }
+
+  function _setUser(u) {
+    _currentUser = u;
+    document.dispatchEvent(new CustomEvent('agauth:change', { detail: u }));
+  }
+
+  async function syncFromBackend() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : null;
+      const url = (window.location.origin === BACKEND_ORIGIN)
+        ? '/api/me'
+        : BACKEND_ORIGIN + '/api/me';
+      const r = await fetch(url, { credentials: 'include', mode: 'cors' });
+      if (!r.ok) {
+        _setUser(null);
+        return null;
+      }
+      const data = await r.json();
+      // signed_in: true only when a real cookie session backs the request, not the
+      // dev ?as= override. Treat ?as= as "not signed in" from the chip's perspective —
+      // the dashboard pages show their data via the override, but auth-gated UI elsewhere
+      // (chip, edit-profile, signin/signout button) must respect the real session state.
+      if (!data.signed_in) {
+        _setUser(null);
+        return null;
+      }
+      _setUser({
+        name: data.display_name || data.username || data.email,
+        email: data.email,
+        username: data.username,
+        role: data.role,
+        slug: data.slug,
+        id: data.id,
+      });
+      return _currentUser;
     } catch (e) {
+      _setUser(null);
       return null;
     }
   }
-  function writeSession(user) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-    document.dispatchEvent(new CustomEvent('agauth:change', { detail: user }));
-  }
-  function clearSession() {
-    localStorage.removeItem(STORAGE_KEY);
-    document.dispatchEvent(new CustomEvent('agauth:change', { detail: null }));
-  }
 
-  function isLoggedIn() { return !!readSession(); }
-  function getUser() { return readSession(); }
-  function signOut() {
-    // Also clear the real backend session if we can reach it (CORS-permitting).
+  async function signOut() {
     try {
-      fetch(BACKEND_ORIGIN + '/api/signout', { method: 'POST', credentials: 'include', mode: 'cors' }).catch(() => {});
+      await fetch(BACKEND_ORIGIN + '/api/signout', {
+        method: 'POST', credentials: 'include', mode: 'cors',
+      });
     } catch (e) {}
-    clearSession();
+    _setUser(null);
     renderChip();
   }
 
-  // Build the per-role URL that "My Profile" should point at. The role-folder pages are
-  // rendered server-side and read /api/me at runtime, so they show whoever's currently
-  // signed in — that's why we link to the role-archetype URL (e.g. /client/client) rather
-  // than to /client/{username}.
   function profileUrl(user) {
     const role = user && user.role;
     const path = ({
@@ -63,65 +92,31 @@
     if (!path) return BACKEND_ORIGIN + '/account/';
     return BACKEND_ORIGIN + path;
   }
-  // Build the per-role URL for "My Submissions". Same role-folder pattern as profileUrl.
   function submissionsUrl(user) {
     const role = user && user.role;
     const folder = ({ superuser: 'g-1vl00d', admin: 'admin', client: 'client' })[role] || 'client';
     return BACKEND_ORIGIN + '/' + folder + '/submissions';
   }
 
-  // Fetch the real backend session on page-load. If a session cookie exists on the
-  // aurora-gracewood.com domain, this fills in role + slug + email so the chip
-  // and "My Profile" link reflect reality. Cross-origin from apex requires CORS on the
-  // backend — currently no CORS is configured, so this only works when auth.js is
-  // loaded from the rewards subdomain. From apex we silently fall back to localStorage.
-  async function syncFromBackend() {
-    try {
-      const url = (window.location.origin === BACKEND_ORIGIN)
-        ? '/api/me'
-        : BACKEND_ORIGIN + '/api/me';
-      const r = await fetch(url, { credentials: 'include', mode: 'cors' });
-      if (!r.ok) {
-        // No active backend session. If localStorage thinks we're signed in, leave that
-        // alone (stub behavior preserved), but DON'T treat it as authoritative.
-        return;
-      }
-      const data = await r.json();
-      const fresh = {
-        name: data.display_name || data.username || data.email,
-        email: data.email,
-        username: data.username,
-        role: data.role,
-        slug: data.slug,
-        id: data.id,
-        from_backend: true,
-      };
-      writeSession(fresh);
-    } catch (e) {
-      // CORS failure or network error — silent. localStorage stub remains source.
-    }
-  }
-
-  /* The chip lives in the nav slot. It re-renders on agauth:change so any
+  /* The chip mounts into a nav slot. It re-renders on agauth:change so any
      page using it stays in sync without polling. */
   let chipSlot = null;
   function installNav(slot) {
     chipSlot = slot;
     renderChip();
     document.addEventListener('agauth:change', renderChip);
-    // Once at install time, sync from the real backend so the chip shows the actual
-    // session (role + slug + email) rather than only what's in localStorage.
-    syncFromBackend();
+    // Always sync from /api/me on mount — that's the single source of truth.
+    syncFromBackend().finally(() => { if (_readyResolve) { _readyResolve(_currentUser); _readyResolve = null; } });
   }
   function renderChip() {
     if (!chipSlot) return;
-    const user = getUser();
+    const user = _currentUser;
     if (user) {
       chipSlot.innerHTML = `
         <div class="ag-chip ag-chip-in" data-open="false">
           <button class="ag-chip-btn" type="button" aria-haspopup="true">
             <span class="ag-chip-avatar">${initials(user.name || user.email)}</span>
-            <span class="ag-chip-name">${esc(user.name || user.email.split('@')[0])}</span>
+            <span class="ag-chip-name">${esc(user.name || (user.email || '').split('@')[0])}</span>
             <span class="ag-chip-caret">▾</span>
           </button>
           <div class="ag-chip-menu" role="menu">
@@ -154,10 +149,11 @@
     }
   }
 
-  /* The modal is the load-bearing UX rule: opens over current page, never
-     redirects, never reloads. Captures sign-in/up, on success closes and
-     fires the onSuccess action. The user's mid-page state (form inputs,
-     scroll position, accordion open state) is preserved. */
+  /* Modal — three modes:
+       signin           : email + password
+       signup           : email only (backend emails verify link)
+       forgot-password  : email only (backend emails reset link)
+     Always opens over current page; never reloads. */
   let modalEl = null;
   let modalOnSuccess = null;
   function ensureModal() {
@@ -176,23 +172,18 @@
         <h2 id="ag-modal-title" class="ag-modal-title"></h2>
         <p class="ag-modal-sub"></p>
         <form class="ag-modal-form" novalidate>
-          <label class="ag-field ag-field-name">
-            <span>Display name</span>
-            <input name="name" type="text" autocomplete="name" required />
-          </label>
           <label class="ag-field">
             <span>Email</span>
             <input name="email" type="email" autocomplete="email" required />
           </label>
-          <label class="ag-field">
+          <label class="ag-field ag-field-password">
             <span>Password</span>
-            <input name="password" type="password" autocomplete="current-password" required minlength="8" />
-          </label>
-          <label class="ag-checkline ag-field-share">
-            <input name="marketing_share" type="checkbox" />
-            <span>I'm OK with my profile being shared across the Great Creations family of brands for relevant offers. (Optional. Awards review is unaffected by this choice.)</span>
+            <input name="password" type="password" autocomplete="current-password" minlength="8" />
           </label>
           <button class="ag-submit" type="submit"></button>
+          <div class="ag-modal-links" style="margin-top:12px;text-align:center;font-size:.84rem">
+            <a href="#" data-mode-link="forgot-password" style="color:rgba(246,247,251,.65);text-decoration:underline;text-decoration-color:rgba(246,247,251,.3)">Forgot password?</a>
+          </div>
           <p class="ag-modal-error" role="alert"></p>
           <p class="ag-modal-disclosure">Aurora Gracewood accounts work across every Aurora-Gracewood product. Your data is governed by Great Creations' privacy policy.</p>
         </form>
@@ -203,6 +194,9 @@
     });
     modalEl.querySelectorAll('.ag-modal-tab').forEach((t) => {
       t.addEventListener('click', () => setMode(t.dataset.mode));
+    });
+    modalEl.querySelectorAll('[data-mode-link]').forEach((a) => {
+      a.addEventListener('click', (e) => { e.preventDefault(); setMode(a.dataset.modeLink); });
     });
     modalEl.querySelector('.ag-modal-form').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -215,28 +209,39 @@
   }
   function setMode(mode) {
     const isSignup = mode === 'signup';
-    modalEl.querySelector('.ag-modal-title').textContent = isSignup
-      ? 'Sign up — free Aurora Gracewood account'
-      : 'Welcome back';
-    modalEl.querySelector('.ag-modal-sub').textContent = isSignup
-      ? "Enter your email and I'll send a setup link. Choose a username and password from there."
-      : 'Sign in to continue where you left off.';
-    modalEl.querySelector('.ag-submit').textContent = isSignup ? 'Send Setup Link' : 'Sign In';
+    const isForgot = mode === 'forgot-password';
+    const isSignin = mode === 'signin' || (!isSignup && !isForgot);
+    const titleEl = modalEl.querySelector('.ag-modal-title');
+    const subEl = modalEl.querySelector('.ag-modal-sub');
+    const submitBtn = modalEl.querySelector('.ag-submit');
+    if (isSignup) {
+      titleEl.textContent = 'Sign up — free Aurora Gracewood account';
+      subEl.textContent = "Enter your email and I'll send a setup link. Choose a username and password from there.";
+      submitBtn.textContent = 'Send Setup Link';
+    } else if (isForgot) {
+      titleEl.textContent = 'Forgot your password?';
+      subEl.textContent = "Enter your email and I'll send a reset link. Check your inbox in a minute.";
+      submitBtn.textContent = 'Send Reset Link';
+    } else {
+      titleEl.textContent = 'Welcome back';
+      subEl.textContent = 'Sign in to continue where you left off.';
+      submitBtn.textContent = 'Sign In';
+    }
     modalEl.querySelectorAll('.ag-modal-tab').forEach((t) => {
-      t.classList.toggle('is-active', t.dataset.mode === mode);
+      t.classList.toggle('is-active', t.dataset.mode === (isForgot ? 'signin' : mode));
     });
-    /* Real signup (backend sends verify link) only needs an email; the user
-       picks a name + password on the verify page. Hide name + password on signup. */
-    modalEl.querySelector('.ag-field-name').style.display = 'none';
-    const pwField = modalEl.querySelector('input[name="password"]').closest('.ag-field');
-    if (pwField) pwField.style.display = isSignup ? 'none' : '';
-    modalEl.querySelector('input[name="password"]').required = !isSignup;
-    modalEl.querySelector('.ag-field-share').style.display = isSignup ? '' : 'none';
-    modalEl.querySelector('input[name="name"]').required = false;
-    modalEl.querySelector('input[name="password"]').setAttribute('autocomplete', isSignup ? 'new-password' : 'current-password');
+    // Password field: only shown for signin. Signup + forgot-password are email-only.
+    const pwField = modalEl.querySelector('.ag-field-password');
+    if (pwField) pwField.style.display = isSignin ? '' : 'none';
+    const pwInput = modalEl.querySelector('input[name="password"]');
+    pwInput.required = isSignin;
+    pwInput.setAttribute('autocomplete', isSignin ? 'current-password' : 'new-password');
+    // Forgot link: hide on forgot mode (already there), show on signin, hide on signup.
+    const links = modalEl.querySelector('.ag-modal-links');
+    if (links) links.style.display = isSignin ? '' : 'none';
     modalEl.querySelector('.ag-modal-error').textContent = '';
-    /* Reset form visibility — signup-success hides the form to show "check your email";
-       on next open, the form must be visible again. */
+    // Reset form visibility (signup-success / forgot-success hide the form to show
+    // a "check your email" message; on next mode change the form must be visible again).
     const formEl = modalEl.querySelector('.ag-modal-form');
     if (formEl) formEl.style.display = '';
     modalEl.dataset.mode = mode;
@@ -248,7 +253,7 @@
     modalEl.setAttribute('aria-hidden', 'false');
     modalOnSuccess = typeof opts.onSuccess === 'function' ? opts.onSuccess : null;
     setTimeout(() => {
-      const focusEl = modalEl.querySelector(opts.mode === 'signup' ? 'input[name="name"]' : 'input[name="email"]');
+      const focusEl = modalEl.querySelector('input[name="email"]');
       if (focusEl) focusEl.focus();
     }, 50);
   }
@@ -272,42 +277,39 @@
     submitBtn.disabled = true; submitBtn.textContent = 'Working…';
 
     try {
+      let endpoint, payload;
       if (mode === 'signup') {
-        /* Real signup: backend emails a verification link. The user clicks it,
-           sets username + password on the verify page, and lands signed-in.
-           From here, just confirm the email was sent. */
-        const r = await fetch(BACKEND_ORIGIN + '/api/signup', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email })
-        });
-        if (!r.ok) {
-          const err = await r.json().catch(() => ({}));
-          throw new Error(err.detail || ('HTTP ' + r.status));
-        }
-        modalEl.querySelector('.ag-modal-title').textContent = 'Check your email';
-        modalEl.querySelector('.ag-modal-sub').textContent =
-          'I just emailed ' + email + ' a setup link. Click it within 24 hours to choose a username and password.';
-        form.style.display = 'none';
+        endpoint = '/api/signup'; payload = { email };
+      } else if (mode === 'forgot-password') {
+        endpoint = '/api/forgot-password'; payload = { email };
       } else {
-        /* Real signin: POST email + password, backend sets ag_session cookie.
-           Then sync from /api/me to populate role/username/slug for chip menu. */
-        const r = await fetch(BACKEND_ORIGIN + '/api/signin', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email, password: password })
-        });
-        if (!r.ok) {
-          const err = await r.json().catch(() => ({}));
-          throw new Error(err.detail || ('HTTP ' + r.status));
-        }
+        endpoint = '/api/signin'; payload = { email, password };
+      }
+      const r = await fetch(BACKEND_ORIGIN + endpoint, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || ('HTTP ' + r.status));
+      }
+
+      if (mode === 'signin') {
+        // Cookie now set; pull the canonical user record and update chip.
         await syncFromBackend();
-        const user = getUser();
+        const user = _currentUser;
         closeModal();
         renderChip();
         if (modalOnSuccess) { try { modalOnSuccess(user); } catch (e) {} }
+      } else {
+        // signup / forgot-password — confirmation message, leave modal open.
+        modalEl.querySelector('.ag-modal-title').textContent = 'Check your email';
+        modalEl.querySelector('.ag-modal-sub').textContent = mode === 'signup'
+          ? 'I just emailed ' + email + ' a setup link. Click it within 24 hours to choose a username and password.'
+          : 'If an account exists for ' + email + ', I just sent a reset link. It expires in 1 hour.';
+        form.style.display = 'none';
       }
     } catch (e) {
       errEl.textContent = e.message || 'Something went wrong. Try again.';
@@ -317,8 +319,8 @@
   }
 
   function requireAuth(action, opts) {
-    if (isLoggedIn()) { action(getUser()); return; }
-    showModal(Object.assign({ mode: 'signup' }, opts || {}, { onSuccess: action }));
+    if (isLoggedIn()) { action(_currentUser); return; }
+    showModal(Object.assign({ mode: 'signin' }, opts || {}, { onSuccess: action }));
   }
 
   function initials(s) {
@@ -331,6 +333,13 @@
   }
 
   window.AGAuth = {
-    isLoggedIn, getUser, signOut, installNav, showModal, requireAuth
+    isLoggedIn, getUser, signOut, installNav, showModal, requireAuth,
+    ready: _ready,
+    refresh: syncFromBackend,
   };
+
+  // Auto-sync on script load so pages that use AGAuth.getUser() / isLoggedIn() without
+  // calling installNav (e.g., /account/index.html) still get the current user state.
+  // installNav still triggers a sync — this is a redundant safety net for non-chip pages.
+  syncFromBackend().finally(() => { if (_readyResolve) { _readyResolve(_currentUser); _readyResolve = null; } });
 })();

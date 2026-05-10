@@ -1,12 +1,17 @@
 """
-Deploy Aurora Gracewood from D:/Great_Creations/Aurora-Gracewood/ to me-think.
-D:/ is the canonical source. This script syncs every file in DEPLOY_FILES
-to me-think and restarts FastAPI.
+Deploy Aurora Gracewood. D:/ is the canonical source. This script:
+  1. Pushes every file in DEPLOY_FILES to me-think and restarts FastAPI
+     (live runtime — what users actually hit via Cloudflare Tunnel).
+  2. Commits + pushes the whole repo to auroragracewood/Aurora on GitHub
+     (mirror — kept in sync as a fallback / source-of-truth backup).
 
 Usage:
-    python deploy.py
+    python deploy.py                 # deploy both (default)
+    python deploy.py --me-think      # me-think only
+    python deploy.py --github        # GitHub only
+    python deploy.py -m "msg"        # override commit message
 """
-import subprocess, base64, time
+import subprocess, base64, time, sys
 from pathlib import Path
 import urllib.request
 

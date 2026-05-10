@@ -73,11 +73,29 @@
 
   <script src="auth.js"></script>
   <script>
+    // ?next=<path> — sent by realm.js when "Sign in" is clicked on a realm page. After
+    // sign-in succeeds, bounce back to that path so the user lands where they came from
+    // instead of stranded on /account/. Same-origin only — won't follow off-site URLs.
+    function nextParam() {
+      try {
+        const n = new URL(window.location.href).searchParams.get('next');
+        if (!n) return null;
+        // Reject anything that doesn't start with '/' or that contains '//' (protocol-relative).
+        if (!n.startsWith('/') || n.startsWith('//')) return null;
+        return n;
+      } catch (e) { return null; }
+    }
     function refresh() {
       const u = AGAuth.getUser();
       document.body.classList.toggle('is-authed', !!u);
-      if (u) document.querySelector('#who').textContent = u.name || u.email;
+      if (u) {
+        document.querySelector('#who').textContent = u.name || u.email;
+        const n = nextParam();
+        if (n) { window.location.href = n; return; }
+      }
     }
+    // If signed in already (cookie session) and ?next= present, redirect immediately
+    // without forcing them to click anything.
     document.querySelectorAll('button[data-mode]').forEach((b) => {
       b.addEventListener('click', () => AGAuth.showModal({ mode: b.dataset.mode, onSuccess: refresh }));
     });

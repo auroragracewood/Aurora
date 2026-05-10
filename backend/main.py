@@ -340,10 +340,10 @@ def _resolve_destination_template(template, recipient):
 
 def grant_starter_badge(user_id, granted_by=None, reason="signup"):
     """Auto-grant the Starter badge to a user. Idempotent — won't duplicate if already issued.
-    Captures awardee_text + destination_url at grant moment so they're frozen forever.
-    After the DB row is committed, renders all 9 form factor SVGs and commits each to
-    auroragracewood/badges via GitHub API. The static files are then served by GitHub Pages
-    forever; Python is out of the embed-view loop."""
+    Captures awardee_text + destination_url at grant moment so they're frozen forever in
+    the issued_badges row. NO files are committed anywhere — the badge artwork is shared
+    across all users and rendered dynamically per-request from the master template + the
+    frozen row data. See aurora-badges-shared-artwork architecture rule."""
     with db() as c:
         u = c.execute("SELECT id, slug, username, display_name FROM users WHERE id = ?", (user_id,)).fetchone()
         if not u:
@@ -368,15 +368,10 @@ def grant_starter_badge(user_id, granted_by=None, reason="signup"):
               awardee_text, destination_url))
         c.commit()
 
-    # After DB grant: render + commit static SVGs to the badges repo. Synchronous in the request
-    # so the recipient's badge artwork is live the moment the grant returns. Failure to commit
-    # doesn't unwind the DB grant — admins can re-trigger render via a separate endpoint later.
-    if not existed_before:
-        try:
-            render_and_commit_badge(STARTER_BADGE_SLUG, recipient, STARTER_DESIGN_YEAR, awardee_text)
-        except Exception:
-            # Don't fail signup if GitHub commit hiccups. Future: log to activity table for retry.
-            pass
+    # No files committed. The shared master template + frozen row data is enough — the dynamic
+    # /badge/<slug>/<user_id>/<form_factor>.svg endpoint produces the artwork on demand, and
+    # Cloudflare's edge cache absorbs scale.
+    _ = existed_before  # keep variable defined for future hooks (e.g., welcome email on first grant)
 
 PERMISSIONS = {
     "superuser": ["Manage all users","Promote / demote admins","Create / close award cycles","Review and score all submissions","Publish editorial content","Configure site settings","Override votes (Community Choice)","Issue refunds via Stripe","Modify award rubrics","Manage trophies pipeline","Access all subsidiary data","Export full database","Audit log access","Run database migrations"],
@@ -1153,6 +1148,48 @@ def serve_badge_specific_asset(badge_slug: str, filename: str):
     media = "image/svg+xml" if safe_f.endswith(".svg") else ("image/png" if safe_f.endswith(".png") else "application/octet-stream")
     return Response(f.read_bytes(), media_type=media, headers={"Cache-Control": "public, max-age=86400"})
 
+# ============== DYNAMIC BADGE SVG ==============
+# /badge/<slug>/<user_id>/<form_factor>.svg
+# Shared master artwork rendered with frozen-at-issuance recipient data from the
+# issued_badges table. ZERO per-user files. Same SVG paths/gradients/layouts for every
+# user; only awardee_text + design_year vary, looked up from the DB at request time.
+# Cloudflare's edge cache absorbs scale (Cache-Control: immutable since the row data
+# is frozen forever once issued).
+
+@app.get("/badge/{badge_slug}/{user_id}/{form_factor}.svg")
+def serve_badge_svg(badge_slug: str, user_id: int, form_factor: str):
+    if badge_slug not in BADGE_REGISTRY:
+        raise HTTPException(404, "Unknown badge")
+    if form_factor not in FORM_FACTOR_LAYOUTS:
+        raise HTTPException(404, "Unknown form factor")
+    with db() as c:
+        row = c.execute(
+            """SELECT u.id AS uid, u.slug, u.username, u.display_name,
+                      ib.design_year, ib.awardee_text, ib.revoked_at
+               FROM issued_badges ib
+               JOIN users u ON u.id = ib.user_id
+               WHERE ib.user_id = ? AND ib.badge_slug = ?""",
+            (user_id, badge_slug)).fetchone()
+    if not row:
+        raise HTTPException(404, "Badge not issued to this user")
+    if row["revoked_at"]:
+        raise HTTPException(410, "Badge revoked")
+    # Use the FROZEN awardee_text from issuance (uppercased name as captured at grant moment)
+    # — never the user's current display_name. The whole point of freezing is that even if the
+    # recipient later renames themselves, the badge stamp is fixed forever.
+    frozen_recipient = {
+        "id": row["uid"],
+        "slug": row["slug"],
+        "username": row["username"],
+        "display_name": row["awardee_text"] or row["display_name"] or row["username"] or "",
+    }
+    svg = render_badge(badge_slug, form_factor, frozen_recipient, row["design_year"], wrap_link=False)
+    # Cache forever at the edge — once issued, badge data is frozen, so the SVG body for this
+    # exact (slug, user_id, form_factor) URL never changes. Cloudflare keeps it warm and serves
+    # at line rate without ever touching FastAPI again.
+    return Response(svg, media_type="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
 # ============== AWARDS LANDING PAGE ==============
 # Starter badges click through to /awards/?from={slug}. The landing page exists at
 # awards/index.html ("Aurora Awards — Submissions"). These routes serve it and its sibling
@@ -1829,11 +1866,12 @@ def render_badge(badge_slug, form_factor, recipient, design_year, wrap_link=True
     return f'<a class="ag-badge-link" href="{href}" title="{title}">{svg}</a>'
 
 
-# Snippet host: the static-site domain serving pre-rendered badge files. Each issuance commits
-# its 9 form-factor SVGs into auroragracewood/badges via GitHub API at grant time, and GitHub
-# Pages serves them under this domain. Embeds anywhere on the web hit this CDN-fronted host
-# directly — Python is OUT of the embed-view loop forever after issuance.
-SNIPPET_HOST = "https://badges.aurora-gracewood.com"
+# SNIPPET_HOST: the public origin embedded in every badge URL the recipient pastes onto
+# their site. Apex via Cloudflare Tunnel → FastAPI's serve_badge_svg endpoint, which renders
+# dynamically from BADGE_REGISTRY artwork + the recipient's frozen issued_badges row. Cloudflare's
+# edge cache (Cache-Control: immutable on the SVG response) absorbs scale at line rate after
+# the first miss. ZERO per-user files anywhere; one master template per badge × form factor.
+SNIPPET_HOST = "https://aurora-gracewood.com"
 
 def render_badge_modal_template(recipient, badge_slug, design_year):
     """Render a hidden <template> containing the embed-picker modal body for one badge.
@@ -1859,8 +1897,9 @@ def render_badge_modal_template(recipient, badge_slug, design_year):
         ff_friendly = layout.get("friendly_name", ff)
         ff_use_case = layout.get("use_case", "")
 
-        # Static SVG URL — what the recipient embeds, what GitHub Pages serves, what
-        # this preview <img> loads. Same URL the modal preview uses + the snippet shows.
+        # SVG URL — what the recipient embeds. Served by serve_badge_svg dynamically from
+        # the master artwork + frozen DB row, behind Cloudflare's edge cache. Same URL the
+        # modal preview uses + the snippet shows. Identical for every user of this badge type.
         svg_url = f"{SNIPPET_HOST}/badge/{badge_slug}/{user_id}/{ff}.svg"
         alt = f"Aurora Gracewood {badge['title']} {design_year} — {awardee}"
 
@@ -1915,15 +1954,16 @@ def render_badge_modal_template(recipient, badge_slug, design_year):
 
 
 # =====================================================================
-# OFFLINE RENDER + COMMIT TO GITHUB PAGES (auroragracewood/badges)
+# GITHUB CONTENTS API — kept for future "publish a master template" use cases
 # =====================================================================
-# At issuance, we render all 9 form factor SVGs and commit each to the public badges repo
-# via the GitHub Contents API. GitHub Pages serves them at https://badges.aurora-gracewood.com/
-# under /badge/{slug}/{user_id}/{form_factor}.svg. After issuance, Python is out of the
-# embed-view loop — every reader anywhere on the web hits the static file via CDN.
+# Historically used to commit per-user badge SVGs into auroragracewood/badges. That model
+# was REMOVED 2026-05-09 because it violated the shared-artwork rule (one master per badge
+# type; per-user data lives in the issued_badges table, not in files). Badges now serve
+# dynamically from /badge/<slug>/<user_id>/<form_factor>.svg via serve_badge_svg above.
 #
-# PNG generation deferred for v1 — Windows libcairo install is a separate ticket. SVG-only
-# is enough for almost every embed surface; PNG is mainly for email signatures (small fraction).
+# These helpers remain for any future flow that genuinely needs to publish a one-time
+# master asset (e.g., a full-resolution PNG export of a master badge to a CDN). They are
+# NOT called per-user, ever.
 
 GITHUB_REPO_OWNER = "auroragracewood"
 GITHUB_REPO_NAME = "badges"
@@ -1987,32 +2027,12 @@ def commit_to_github(path, content, commit_msg):
     except Exception as e:
         return False, f"PUT error: {str(e)[:200]}"
 
-def render_and_commit_badge(badge_slug, recipient, design_year, awardee_text):
-    """Render all 9 form factor SVGs for one (badge × recipient × year) and commit each to
-    auroragracewood/badges. Path scheme: /badge/{slug}/{user_id}/{form_factor}.svg
-
-    `awardee_text` is the FROZEN-AT-ISSUANCE awardee (uppercased name as-of grant moment).
-    We pass it through `recipient.display_name` so render_badge picks it up; render_badge
-    then `.upper()`s it (idempotent on already-uppercased text).
-
-    Returns: dict of {form_factor: (success, message)}.
-    """
-    user_id = recipient["id"]
-    # Build a frozen recipient view so render_badge uses the captured awardee, not live user data.
-    frozen_recipient = dict(recipient)
-    frozen_recipient["display_name"] = awardee_text
-
-    results = {}
-    for ff in FORM_FACTOR_ORDER:
-        if ff not in FORM_FACTOR_LAYOUTS:
-            continue
-        # wrap_link=False — the static SVG file is just artwork. Click-through href is applied
-        # only when the badge is shown inline on a profile (using frozen destination_url from DB).
-        svg = render_badge(badge_slug, ff, frozen_recipient, design_year, wrap_link=False)
-        path = f"badge/{badge_slug}/{user_id}/{ff}.svg"
-        commit_msg = f"render {badge_slug}/{user_id}/{ff} ({design_year}, {awardee_text})"
-        results[ff] = commit_to_github(path, svg, commit_msg)
-    return results
+# render_and_commit_badge() was REMOVED 2026-05-09 — its per-user GitHub commit pattern
+# violated the shared-artwork rule (one master template per badge × form factor; user data
+# from issued_badges row injected at request time). New flow: serve_badge_svg endpoint
+# renders dynamically from the frozen DB row. Cloudflare's edge cache absorbs scale.
+# commit_to_github() is kept for any future "commit a master template" use case but is
+# no longer called for per-user SVGs.
 
 
 def render_profile(u, roles, links, theme):

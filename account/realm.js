@@ -432,3 +432,31 @@ document.addEventListener("DOMContentLoaded", function () {
   pollMe(true);
   setInterval(function () { pollMe(false); }, 8000);
 });
+
+// Nav "Menu" dropdown — toggle on click, close on outside-click, populate the
+// public-profile link from /api/me. One dropdown per page; if you ever need
+// multiples, generalize the queries.
+document.addEventListener("DOMContentLoaded", function () {
+  var btn = document.querySelector(".nav-menu-btn");
+  var items = document.querySelector(".nav-menu-items");
+  if (!btn || !items) return;
+  btn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    var open = btn.getAttribute("aria-expanded") === "true";
+    btn.setAttribute("aria-expanded", open ? "false" : "true");
+    items.hidden = open;
+  });
+  document.addEventListener("click", function (e) {
+    if (!btn.contains(e.target) && !items.contains(e.target)) {
+      btn.setAttribute("aria-expanded", "false");
+      items.hidden = true;
+    }
+  });
+  // Wire Public profile link to the current user's slug (or numeric id fallback).
+  var ppLink = items.querySelector("[data-public-profile-link]");
+  if (ppLink) {
+    AURORA.api("GET", "/api/me").then(function (me) {
+      ppLink.href = "/u/" + (me.slug || me.id);
+    }).catch(function () { /* unauthenticated; leave href as-is */ });
+  }
+});

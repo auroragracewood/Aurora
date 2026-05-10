@@ -182,10 +182,17 @@
               <input name="password" type="password" autocomplete="current-password" />
               <button type="button" class="ag-eye-btn" data-eye="password" aria-label="Show password" title="Show / hide password">👁</button>
             </div>
+            <div class="ag-caps-warning" id="ag-caps-warning" hidden>⚠ Caps Lock is on</div>
+          </label>
+          <label class="ag-checkline ag-field-remember">
+            <input name="remember" type="checkbox" />
+            <span>Remember this device for 30 days. Leave unchecked on shared computers.</span>
           </label>
           <button class="ag-submit" type="submit"></button>
           <div class="ag-modal-links" style="margin-top:12px;text-align:center;font-size:.84rem">
             <a href="#" data-mode-link="forgot-password" style="color:rgba(246,247,251,.65);text-decoration:underline;text-decoration-color:rgba(246,247,251,.3)">Forgot password?</a>
+            <span style="color:rgba(246,247,251,.3);margin:0 8px">·</span>
+            <a href="#" data-mode-link="forgot-username" style="color:rgba(246,247,251,.65);text-decoration:underline;text-decoration-color:rgba(246,247,251,.3)">Forgot username?</a>
           </div>
           <p class="ag-modal-error" role="alert"></p>
           <p class="ag-modal-disclosure">Aurora Gracewood accounts work across every Aurora-Gracewood product. Your data is governed by Great Creations' privacy policy.</p>
@@ -216,6 +223,19 @@
         b.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
       });
     });
+    // Caps Lock detector on the password field — common cause of failed sign-in.
+    const pwInput = modalEl.querySelector('input[name="password"]');
+    const capsWarning = modalEl.querySelector('#ag-caps-warning');
+    function updateCapsHint(ev) {
+      if (!capsWarning) return;
+      const on = ev.getModifierState && ev.getModifierState('CapsLock');
+      capsWarning.hidden = !on;
+    }
+    if (pwInput) {
+      pwInput.addEventListener('keydown', updateCapsHint);
+      pwInput.addEventListener('keyup', updateCapsHint);
+      pwInput.addEventListener('blur', () => { if (capsWarning) capsWarning.hidden = true; });
+    }
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && modalEl.getAttribute('aria-hidden') === 'false') closeModal();
     });
@@ -223,7 +243,9 @@
   }
   function setMode(mode) {
     const isSignup = mode === 'signup';
-    const isForgot = mode === 'forgot-password';
+    const isForgotPw = mode === 'forgot-password';
+    const isForgotUser = mode === 'forgot-username';
+    const isForgot = isForgotPw || isForgotUser;
     const isSignin = mode === 'signin' || (!isSignup && !isForgot);
     const titleEl = modalEl.querySelector('.ag-modal-title');
     const subEl = modalEl.querySelector('.ag-modal-sub');
@@ -232,10 +254,14 @@
       titleEl.textContent = 'Sign up — free Aurora Gracewood account';
       subEl.textContent = "Enter your email and I'll send a setup link. Choose a username and password from there.";
       submitBtn.textContent = 'Send Setup Link';
-    } else if (isForgot) {
+    } else if (isForgotPw) {
       titleEl.textContent = 'Forgot your password?';
-      subEl.textContent = "Enter your email and I'll send a reset link. Check your inbox in a minute.";
+      subEl.textContent = "Enter your email and I'll send a reset link plus your username. Check your inbox in a minute.";
       submitBtn.textContent = 'Send Reset Link';
+    } else if (isForgotUser) {
+      titleEl.textContent = 'Forgot your username?';
+      subEl.textContent = "Enter your email and I'll send your username. Check your inbox in a minute.";
+      submitBtn.textContent = 'Send My Username';
     } else {
       titleEl.textContent = 'Welcome back';
       subEl.textContent = 'Sign in to continue where you left off.';
@@ -244,18 +270,19 @@
     modalEl.querySelectorAll('.ag-modal-tab').forEach((t) => {
       t.classList.toggle('is-active', t.dataset.mode === (isForgot ? 'signin' : mode));
     });
-    // Password field: only shown for signin. Signup + forgot-password are email-only.
+    // Password field: only shown for signin. Signup + forgot-* are email-only.
     const pwField = modalEl.querySelector('.ag-field-password');
     if (pwField) pwField.style.display = isSignin ? '' : 'none';
     const pwInput = modalEl.querySelector('input[name="password"]');
     pwInput.required = isSignin;
     pwInput.setAttribute('autocomplete', isSignin ? 'current-password' : 'new-password');
-    // Forgot link: hide on forgot mode (already there), show on signin, hide on signup.
+    // Remember-me: only for signin.
+    const rmField = modalEl.querySelector('.ag-field-remember');
+    if (rmField) rmField.style.display = isSignin ? '' : 'none';
+    // Forgot links cluster: only on signin.
     const links = modalEl.querySelector('.ag-modal-links');
     if (links) links.style.display = isSignin ? '' : 'none';
     modalEl.querySelector('.ag-modal-error').textContent = '';
-    // Reset form visibility (signup-success / forgot-success hide the form to show
-    // a "check your email" message; on next mode change the form must be visible again).
     const formEl = modalEl.querySelector('.ag-modal-form');
     if (formEl) formEl.style.display = '';
     modalEl.dataset.mode = mode;
@@ -301,12 +328,15 @@
 
     try {
       let endpoint, payload;
+      const remember = !!data.get('remember');
       if (mode === 'signup') {
         endpoint = '/api/signup'; payload = { email };
       } else if (mode === 'forgot-password') {
         endpoint = '/api/forgot-password'; payload = { email };
+      } else if (mode === 'forgot-username') {
+        endpoint = '/api/forgot-username'; payload = { email };
       } else {
-        endpoint = '/api/signin'; payload = { email, password };
+        endpoint = '/api/signin'; payload = { email, password, remember };
       }
       const r = await fetch(BACKEND_ORIGIN + endpoint, {
         method: 'POST',
@@ -327,11 +357,17 @@
         renderChip();
         if (modalOnSuccess) { try { modalOnSuccess(user); } catch (e) {} }
       } else {
-        // signup / forgot-password — confirmation message, leave modal open.
+        // signup / forgot-* — confirmation message, leave modal open.
         modalEl.querySelector('.ag-modal-title').textContent = 'Check your email';
-        modalEl.querySelector('.ag-modal-sub').textContent = mode === 'signup'
-          ? 'I just emailed ' + email + ' a setup link. Click it within 24 hours to choose a username and password.'
-          : 'If an account exists for ' + email + ', I just sent a reset link. It expires in 1 hour.';
+        let confirmMsg;
+        if (mode === 'signup') {
+          confirmMsg = 'I just emailed ' + email + ' a setup link. Click it within 24 hours to choose a username and password.';
+        } else if (mode === 'forgot-password') {
+          confirmMsg = 'If an account exists for ' + email + ', I just sent a reset link plus your username. The reset link expires in 1 hour.';
+        } else {
+          confirmMsg = 'If an account exists for ' + email + ', I just sent your username.';
+        }
+        modalEl.querySelector('.ag-modal-sub').textContent = confirmMsg;
         form.style.display = 'none';
       }
     } catch (e) {

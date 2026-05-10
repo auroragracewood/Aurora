@@ -311,6 +311,52 @@ def migrate_db():
                 review_notes TEXT
             )
         """)
+
+        # email_events — full lifecycle history per email address. Useful for:
+        #   1. enforcing the post-delete lockout (account_deleted within 30d+6mo => block re-signup)
+        #   2. computing engagement signals (signed_in within 72h of account_created => engaged)
+        #   3. superuser auditing ("what's happened with email X?")
+        # user_id may be NULL (event happened before account_created) or stale (account deleted).
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS email_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                user_id INTEGER,
+                event TEXT NOT NULL,
+                detail TEXT,
+                created_at INTEGER NOT NULL
+            )
+        """)
+        c.execute("CREATE INDEX IF NOT EXISTS idx_email_events_email ON email_events(email)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_email_events_user ON email_events(user_id)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_email_events_event ON email_events(event)")
+
+        # rate_limit_log — sliding-window per-bucket counter. Bucket = "signup:1.2.3.4" or
+        # "signin:user@x.com" etc. Cleanup of old rows happens on every check_rate_limit call.
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS rate_limit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bucket TEXT NOT NULL,
+                ts INTEGER NOT NULL
+            )
+        """)
+        c.execute("CREATE INDEX IF NOT EXISTS idx_rate_limit_bucket ON rate_limit_log(bucket, ts)")
+
+        # New columns on users for case-insensitive username lookup, soft-delete tracking,
+        # 72h engagement signal, and first-signin timestamp.
+        users_cols = {row[1] for row in c.execute("PRAGMA table_info(users)").fetchall()}
+        if "username_canonical" not in users_cols:
+            c.execute("ALTER TABLE users ADD COLUMN username_canonical TEXT")
+            # Backfill existing users — lowercase their current username
+            c.execute("UPDATE users SET username_canonical = LOWER(username) WHERE username IS NOT NULL")
+            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_canonical ON users(username_canonical)")
+        if "deleted_at" not in users_cols:
+            c.execute("ALTER TABLE users ADD COLUMN deleted_at INTEGER")
+        if "engaged_72h" not in users_cols:
+            c.execute("ALTER TABLE users ADD COLUMN engaged_72h INTEGER DEFAULT 0")
+        if "first_signin_at" not in users_cols:
+            c.execute("ALTER TABLE users ADD COLUMN first_signin_at INTEGER")
+
         c.commit()
 migrate_db()
 
@@ -501,7 +547,7 @@ def validate_email_format(email: str) -> str | None:
     if not email or "@" not in email:
         return "Email must contain @"
     if not EMAIL_RE.match(email):
-        return "Email must look like name@example.com (≥2 chars before and after the dot)"
+        return "Email must look like name@example.com"
     return None
 
 def validate_password_rules(password: str) -> list:
@@ -512,6 +558,154 @@ def validate_password_rules(password: str) -> list:
     if not re.search(r'[0-9]', password): fails.append("at least 1 number")
     if not PASSWORD_SYMBOL_RE.search(password): fails.append("at least 1 symbol")
     return fails
+
+# Common-password blacklist — passes the rule checks above but appears in every breach corpus.
+# All comparisons are lowercased; user's input is .lower()'d before lookup. Extend over time.
+COMMON_PASSWORDS = {
+    "password1!", "password123!", "welcome1!", "welcome123!",
+    "qwerty1!", "qwerty123!", "q1w2e3r4!", "p@ssw0rd",
+    "p@ssword1", "letmein1!", "letmein123!", "abcd1234!",
+    "iloveyou1!", "football1!", "football123!", "princess1!",
+    "trustno1!", "master123!", "admin123!", "admin1234!",
+    "sunshine1!", "monkey123!", "dragon123!", "pokemon1!",
+    "pokemon123!", "charlie1!", "killer1!", "hello123!",
+    "hello1234!", "welcome2025!", "spring2025!", "summer2025!",
+    "winter2025!", "autumn2025!", "password2025!", "changeme1!",
+    "default1!", "newpass1!",
+}
+
+def password_is_common(password: str) -> bool:
+    """True if the password matches a known-common entry (lowercased)."""
+    return password.lower() in COMMON_PASSWORDS
+
+# ---- Username rules ----
+# Reserved usernames the platform must never allow normal users to claim. Matched on the
+# lowercased form of the submitted username.
+RESERVED_USERNAMES_EXACT = {
+    # Roles / authority impersonation
+    "admin", "administrator", "superuser", "moderator", "mod", "system", "root",
+    "owner", "ceo", "founder", "operator", "sysadmin", "webmaster",
+    # Brand / platform identity
+    "aurora", "auroragracewood", "gracewood", "greatcreations", "greatcreation",
+    "greatcreationstudios", "auroraawards",
+    # Support / help
+    "support", "help", "info", "contact", "abuse", "security", "press",
+    "helpsupport", "awardsupport", "awardssupport", "awardhelp", "awardshelp",
+    # Tech / placeholder values
+    "null", "undefined", "none", "anonymous", "user", "username", "test", "guest",
+    # Personal handles claimed by site operator / authored entities
+    "ninetentwo", "9ten2", "nine10two", "nineten2", "9tentwo",
+    "anticontainment", "anticontainmentsystem",
+    "chatgpt", "claudbot", "claude", "openclaw", "openworld",
+    "andrewmacdonald", "andrew",
+    "acatnamedmanwhore", "manwhorethecat",
+}
+
+# Pattern-based reservations. Each (kind, fragment) — kind is "starts", "ends", "contains".
+RESERVED_PATTERNS = [
+    ("starts", "official"),
+    ("ends",   "team"),
+    ("ends",   "staff"),
+    ("contains", "admin"),    # blocks "newadmin", "supadmin", "adminx"
+    ("contains", "niger"),    # racial slur stem
+    ("contains", "faggot"),   # slur
+]
+
+def is_reserved_username(name: str) -> bool:
+    """Case-insensitive reserved-name check. Returns True if name should be rejected."""
+    n = name.lower()
+    if n in RESERVED_USERNAMES_EXACT:
+        return True
+    for kind, frag in RESERVED_PATTERNS:
+        if kind == "starts" and n.startswith(frag): return True
+        if kind == "ends"   and n.endswith(frag):   return True
+        if kind == "contains" and frag in n:        return True
+    return False
+
+USERNAME_CHARSET_RE = re.compile(r'^[a-zA-Z0-9_-]+$')
+
+def validate_username(name: str) -> list:
+    """Returns a list of validation errors; empty means valid.
+    Rules: 3-18 chars, charset [a-zA-Z0-9_-], not all digits, not starting with a digit,
+    not starting/ending with _ or -, not in reserved list."""
+    fails = []
+    if not name or not isinstance(name, str):
+        return ["a username"]
+    n = name.strip()
+    if len(n) < 3:
+        fails.append("at least 3 characters")
+    if len(n) > 18:
+        fails.append("at most 18 characters")
+    if n and not USERNAME_CHARSET_RE.match(n):
+        fails.append("only letters, numbers, underscore, hyphen")
+    if n and n[0].isdigit():
+        fails.append("not starting with a number")
+    if n and n.isdigit():
+        fails.append("not all digits")
+    if n and n[0] in ("_", "-"):
+        fails.append("not starting with _ or -")
+    if n and n[-1] in ("_", "-"):
+        fails.append("not ending with _ or -")
+    if n and is_reserved_username(n):
+        fails.append("a non-reserved name (this one is reserved by the platform)")
+    return fails
+
+# ---- Email lifecycle events + lockout ----
+LOCKOUT_RECOVERY_WINDOW_SECS = 30 * 24 * 3600        # 30 days soft-recovery after delete
+LOCKOUT_FULL_PERIOD_SECS = (30 + 6 * 30) * 24 * 3600  # 30d recovery + 6mo lockout total
+
+def log_email_event(email: str, event: str, user_id=None, detail=None):
+    """Append an entry to email_events. Idempotent for callers — they don't have to check
+    if the email already exists somewhere."""
+    if not email: return
+    with db() as c:
+        c.execute(
+            "INSERT INTO email_events (email, user_id, event, detail, created_at) VALUES (?,?,?,?,?)",
+            (email.lower(), event, user_id, detail, int(time.time()))
+        )
+        c.commit()
+
+def is_email_locked_out(email: str) -> bool:
+    """True if this email had an account_deleted event within (30d recovery + 6mo lockout)
+    and hasn't been recovered or otherwise unblocked. Used by /api/signup to refuse
+    re-signups by recently-deleted accounts."""
+    if not email: return False
+    cutoff = int(time.time()) - LOCKOUT_FULL_PERIOD_SECS
+    with db() as c:
+        r = c.execute(
+            """SELECT 1 FROM email_events
+               WHERE email = ? AND event = 'account_deleted' AND created_at > ?
+               LIMIT 1""",
+            (email.lower(), cutoff)
+        ).fetchone()
+    return r is not None
+
+# ---- Rate limiting (sliding window) ----
+def check_rate_limit(bucket: str, max_count: int, window_secs: int) -> bool:
+    """Returns True if the request is allowed (under the limit); False if rate-limited.
+    On allow, also records the current event in rate_limit_log so the next caller sees it.
+    Cleans rows older than window from the bucket on every call so the table doesn't grow."""
+    now = int(time.time())
+    cutoff = now - window_secs
+    with db() as c:
+        c.execute("DELETE FROM rate_limit_log WHERE bucket = ? AND ts < ?", (bucket, cutoff))
+        cur = c.execute("SELECT COUNT(*) FROM rate_limit_log WHERE bucket = ?", (bucket,)).fetchone()
+        count = cur[0] if cur else 0
+        if count >= max_count:
+            c.commit()
+            return False
+        c.execute("INSERT INTO rate_limit_log (bucket, ts) VALUES (?, ?)", (bucket, now))
+        c.commit()
+    return True
+
+def client_ip(request) -> str:
+    """Best-effort client IP. Cloudflare passes CF-Connecting-IP; honor it when present
+    (otherwise X-Forwarded-For first hop, then request.client.host as fallback)."""
+    cf = request.headers.get("cf-connecting-ip")
+    if cf: return cf.strip()
+    xff = request.headers.get("x-forwarded-for")
+    if xff: return xff.split(",")[0].strip()
+    return request.client.host if request.client else ""
 
 def _read_resend_key():
     if not RESEND_KEY_FILE.exists():
@@ -560,10 +754,13 @@ def create_session(user_id, request):
         c.commit()
     return sid
 
-def _attach_session(response, sid):
+def _attach_session(response, sid, max_age=None):
+    """Attach the session cookie. max_age (seconds) defaults to SESSION_TTL_SECS (30d) but
+    sign-in passes a shorter value (1 day) when 'remember me' is unchecked."""
     response.set_cookie(SESSION_COOKIE, sid,
                         httponly=True, secure=True, samesite="lax",
-                        max_age=SESSION_TTL_SECS, path="/")
+                        max_age=(max_age if max_age is not None else SESSION_TTL_SECS),
+                        path="/")
     return response
 
 def _post_signin_redirect(role):
@@ -598,10 +795,10 @@ def _auth_form_html(token, email, kind, locked_username=None):
         else:
             username_field = (
                 '<div class="ag-field"><label>Choose a username</label>'
-                '<input type="text" name="username" id="username" required minlength="3" maxlength="40" '
+                '<input type="text" name="username" id="username" required minlength="3" maxlength="18" '
                 'pattern="[a-zA-Z0-9_-]+" '
-                'placeholder="3-40 chars, letters/numbers/_- only" autocomplete="username">'
-                '<div class="hint" id="username-hint"></div></div>'
+                'placeholder="3–18 chars · letters · numbers · _ -" autocomplete="username">'
+                '<div class="hint" id="username-hint">Type a username</div></div>'
             )
     else:
         title = "Reset your password"
@@ -734,29 +931,75 @@ button.submit:disabled{{opacity:.45;cursor:not-allowed;filter:none}}
     return false;
   }}
 
+  // Local username rules — kept in sync with backend validate_username().
+  // The server is authoritative; client copy is just for instant feedback.
+  function localValidateUsername(uv) {{
+    const fails = [];
+    if (uv.length < 3)  fails.push("at least 3 characters");
+    if (uv.length > 18) fails.push("at most 18 characters");
+    if (uv && !/^[a-zA-Z0-9_-]+$/.test(uv)) fails.push("only letters, numbers, _ -");
+    if (uv && /^[0-9]/.test(uv)) fails.push("not starting with a number");
+    if (uv && /^[0-9]+$/.test(uv)) fails.push("not all digits");
+    if (uv && /^[_-]/.test(uv)) fails.push("not starting with _ or -");
+    if (uv && /[_-]$/.test(uv)) fails.push("not ending with _ or -");
+    return fails;
+  }}
+
+  // Live availability check via /api/auth/check-username — debounced 350ms.
+  let _checkTimer = null, _lastChecked = '', _availabilityOK = false;
+  function scheduleAvailabilityCheck() {{
+    const u = document.getElementById('username');
+    const hint = document.getElementById('username-hint');
+    if (!u || !hint) return;
+    const uv = u.value.trim();
+    if (uv === _lastChecked) return;
+    _availabilityOK = false;
+    if (_checkTimer) clearTimeout(_checkTimer);
+    if (uv.length < 3) return;
+    if (localValidateUsername(uv).length) return;  // Don't waste a server call on locally-invalid names
+    _checkTimer = setTimeout(async () => {{
+      _lastChecked = uv;
+      try {{
+        const r = await fetch('/api/auth/check-username?u=' + encodeURIComponent(uv));
+        const d = await r.json();
+        if (u.value.trim() !== uv) return;  // user kept typing; ignore stale response
+        if (d.available) {{
+          _availabilityOK = true;
+          hint.textContent = '✓ ' + uv + ' is available';
+          hint.className = 'hint ok';
+        }} else {{
+          _availabilityOK = false;
+          hint.textContent = d.reason || (uv + ' is not available');
+          hint.className = 'hint bad';
+        }}
+        gate();
+      }} catch (e) {{ /* ignore network errors here */ }}
+    }}, 350);
+  }}
+
   function gate() {{
     const strong = evalStrength();
     const matched = evalMatch();
     const u = document.getElementById('username');
     let userOk = true;
     if (u) {{
-      const uv = u.value;
-      const valid = uv.length >= 3 && uv.length <= 40 && /^[a-zA-Z0-9_-]+$/.test(uv);
-      userOk = valid;
+      const uv = u.value.trim();
+      const fails = localValidateUsername(uv);
+      const localValid = fails.length === 0;
       const hint = document.getElementById('username-hint');
       if (hint) {{
         if (uv.length === 0) {{
-          hint.textContent = '';
+          hint.textContent = 'Type a username';
           hint.className = 'hint';
-        }} else if (!valid) {{
-          hint.textContent = '3–40 chars; letters, numbers, underscore, hyphen only';
+        }} else if (!localValid) {{
+          hint.textContent = 'Username must be ' + fails.join('; ');
           hint.className = 'hint bad';
-        }} else {{
-          hint.textContent = '✓';
+        }} else if (uv !== _lastChecked) {{
+          hint.textContent = 'Checking availability…';
           hint.className = 'hint';
-          hint.style.color = '#a3e3c1';
         }}
       }}
+      userOk = localValid && (uv === _lastChecked ? _availabilityOK : false);
     }}
     btn.disabled = !(strong && matched && userOk);
   }}
@@ -764,7 +1007,9 @@ button.submit:disabled{{opacity:.45;cursor:not-allowed;filter:none}}
   pw.addEventListener('input', gate);
   pw2.addEventListener('input', gate);
   const u = document.getElementById('username');
-  if (u) u.addEventListener('input', gate);
+  if (u) {{
+    u.addEventListener('input', () => {{ scheduleAvailabilityCheck(); gate(); }});
+  }}
 
   document.querySelectorAll('.eye-btn').forEach(b => {{
     b.addEventListener('click', () => {{
@@ -824,6 +1069,16 @@ async def api_signup(request: Request):
     if role not in ("client", "admin", "superuser"):
         role = "client"
 
+    # Rate limit: 3 signups per IP per hour. Keeps Resend free-tier safe from spam runs.
+    ip = client_ip(request)
+    if not check_rate_limit(f"signup:{ip}", 3, 3600):
+        raise HTTPException(429, "Too many signup attempts from this connection. Try again in an hour.")
+
+    # Lockout: if this email was deleted recently, refuse re-signup. Vague message
+    # (per locked decision B) — does not leak whether an account ever existed at this address.
+    if is_email_locked_out(email):
+        raise HTTPException(409, "We can't accept this email right now. Try again later.")
+
     now = int(time.time())
     token = generate_token()
     expires = now + 24 * 3600
@@ -837,12 +1092,15 @@ async def api_signup(request: Request):
             uid = existing["id"]
             c.execute("UPDATE users SET verify_token = ?, verify_expires = ? WHERE id = ?",
                       (token, expires, uid))
+            event_kind = "signup_resent"
         else:
             uid = next_user_id(role)
             c.execute("""INSERT INTO users (id, email, role, status, created_at, verify_token, verify_expires, slug)
                          VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)""",
                       (uid, email, role, now, token, expires, str(uid)))
+            event_kind = "signup_pending"
         c.commit()
+    log_email_event(email, event_kind, user_id=uid, detail=f"role={role}")
 
     verify_url = f"{PUBLIC_BASE_URL}/verify/{token}"
     html = (
@@ -871,6 +1129,7 @@ def verify_page(token: str):
     if r["verify_expires"] and int(time.time()) > r["verify_expires"]:
         return HTMLResponse(_simple_page("Link expired",
             "This setup link has expired. Sign up again to get a fresh one."), status_code=410)
+    log_email_event(r["email"], "verify_clicked", user_id=r["id"])
     locked = bool(r["username_locked"])
     return HTMLResponse(_auth_form_html(token, r["email"], "verify",
                                         locked_username=r["username"] if locked else None))
@@ -880,9 +1139,11 @@ async def api_verify(token: str, request: Request):
     data = await request.json()
     submitted_username = (data.get("username") or "").strip()
     password = (data.get("password") or "")
-    fails = validate_password_rules(password)
-    if fails:
-        raise HTTPException(400, "Password needs " + "; ".join(fails))
+    pw_fails = validate_password_rules(password)
+    if pw_fails:
+        raise HTTPException(400, "Password needs " + "; ".join(pw_fails))
+    if password_is_common(password):
+        raise HTTPException(400, "That password is on a list of commonly-leaked passwords. Pick a different one.")
 
     with db() as c:
         r = c.execute("""SELECT id, email, username, role, username_locked, verify_expires
@@ -896,27 +1157,34 @@ async def api_verify(token: str, request: Request):
     if locked:
         final_username = r["username"]
     else:
-        if not submitted_username or len(submitted_username) < 3 or len(submitted_username) > 40:
-            raise HTTPException(400, "Username must be 3-40 characters")
-        if not re.fullmatch(r"[A-Za-z0-9_-]+", submitted_username):
-            raise HTTPException(400, "Username can only contain letters, numbers, underscores, and hyphens")
+        u_fails = validate_username(submitted_username)
+        if u_fails:
+            raise HTTPException(400, "Username must be " + "; ".join(u_fails))
+        # Case-insensitive uniqueness via username_canonical column.
+        canonical = submitted_username.lower()
         with db() as c:
-            existing = c.execute("SELECT id FROM users WHERE username = ? AND id != ?",
-                                 (submitted_username, r["id"])).fetchone()
+            existing = c.execute(
+                "SELECT id FROM users WHERE username_canonical = ? AND id != ?",
+                (canonical, r["id"])
+            ).fetchone()
             if existing:
-                raise HTTPException(409, "Username already taken")
+                raise HTTPException(409, "Username is taken (case-insensitive — that name in any case is reserved by another user)")
         final_username = submitted_username
 
     pw_hash = hash_password(password)
     now = int(time.time())
+    final_canonical = final_username.lower()
     with db() as c:
-        c.execute("""UPDATE users SET username = ?, password_hash = ?, status = 'active',
+        c.execute("""UPDATE users SET username = ?, username_canonical = ?, password_hash = ?,
+                     status = 'active',
                      verify_token = NULL, verify_expires = NULL, verified_at = ?
-                     WHERE id = ?""", (final_username, pw_hash, now, r["id"]))
+                     WHERE id = ?""",
+                  (final_username, final_canonical, pw_hash, now, r["id"]))
         c.execute("""UPDATE users SET display_name = ?
                      WHERE id = ? AND (display_name IS NULL OR display_name = '')""",
                   (final_username, r["id"]))
         c.commit()
+    log_email_event(r["email"], "account_created", user_id=r["id"], detail=f"username={final_username}")
 
     if r["role"] == "client":
         try: grant_starter_badge(r["id"], reason="signup")
@@ -933,23 +1201,68 @@ async def api_signin(request: Request):
     data = await request.json()
     email = (data.get("email") or "").strip().lower()
     password = (data.get("password") or "")
+    remember = bool(data.get("remember"))
     if not email or not password:
         raise HTTPException(400, "Email and password required")
+
+    # Rate limit by both email AND IP — email guards against single-target brute force,
+    # IP guards against credential-stuffing across many emails.
+    ip = client_ip(request)
+    if not check_rate_limit(f"signin:email:{email}", 5, 900):
+        raise HTTPException(429, "Too many sign-in attempts for this email. Wait 15 minutes.")
+    if not check_rate_limit(f"signin:ip:{ip}", 20, 900):
+        raise HTTPException(429, "Too many sign-in attempts from this connection. Wait 15 minutes.")
+
     with db() as c:
-        r = c.execute("SELECT id, password_hash, status, role FROM users WHERE email = ?",
+        r = c.execute("SELECT id, password_hash, status, role, verified_at, first_signin_at FROM users WHERE email = ?",
                       (email,)).fetchone()
     if not r or not r["password_hash"]:
         raise HTTPException(401, "Email or password incorrect")
     if r["status"] != "active":
-        raise HTTPException(403, "Account not active. Verify your email or contact support.")
+        if r["status"] == "deleted":
+            # User can recover their soft-deleted account by signing in within the 30d window.
+            with db() as c2:
+                u = c2.execute("SELECT deleted_at FROM users WHERE id = ?", (r["id"],)).fetchone()
+            if u and u["deleted_at"] and (int(time.time()) - u["deleted_at"]) < LOCKOUT_RECOVERY_WINDOW_SECS:
+                if verify_password(password, r["password_hash"]):
+                    with db() as c3:
+                        c3.execute("UPDATE users SET status = 'active', deleted_at = NULL WHERE id = ?", (r["id"],))
+                        c3.commit()
+                    log_email_event(email, "account_recovered", user_id=r["id"])
+                    log_activity(r["id"], "account_recovered")
+                else:
+                    log_activity(r["id"], "signin_failed_on_deleted")
+                    raise HTTPException(401, "Email or password incorrect")
+            else:
+                raise HTTPException(403, "Account no longer active.")
+        else:
+            raise HTTPException(403, "Account not active. Verify your email or contact support.")
     if not verify_password(password, r["password_hash"]):
         log_activity(r["id"], "signin_failed")
         raise HTTPException(401, "Email or password incorrect")
+
+    now = int(time.time())
     sid = create_session(r["id"], request)
     log_activity(r["id"], "signin")
+    log_email_event(email, "signed_in", user_id=r["id"], detail=f"ip={ip[:39]}")
+
+    # 72h engagement marker — set on first signin if it's within 72h of account verification.
+    # This lets superuser see "users who returned within 3 days" vs "signed up but never came back".
+    # Only fires once (first_signin_at NULL); never overwrites.
+    if not r["first_signin_at"]:
+        engaged = 0
+        if r["verified_at"] and (now - r["verified_at"]) < 72 * 3600:
+            engaged = 1
+            log_email_event(email, "engaged_72h_marked", user_id=r["id"])
+        with db() as c:
+            c.execute("UPDATE users SET first_signin_at = ?, engaged_72h = ? WHERE id = ?",
+                      (now, engaged, r["id"]))
+            c.commit()
+
     response = JSONResponse({"ok": True, "user_id": r["id"],
                              "redirect": _post_signin_redirect(r["role"])})
-    return _attach_session(response, sid)
+    # remember-me decides session length: 30 days if checked, 1 day if not.
+    return _attach_session(response, sid, max_age=(SESSION_TTL_SECS if remember else 24 * 3600))
 
 @app.post("/api/signout")
 async def api_signout(request: Request):
@@ -965,13 +1278,19 @@ async def api_signout(request: Request):
 @app.post("/api/forgot-password")
 async def api_forgot_password(request: Request):
     """Always returns 'ok' regardless of whether the email exists — don't leak account
-    existence to attackers. Only sends the email if a real active account is found."""
+    existence to attackers. Only sends the email if a real active account is found.
+    Email also includes the username (so users who forgot both can recover both at once)."""
     data = await request.json()
     email = (data.get("email") or "").strip().lower()
     if not email:
         raise HTTPException(400, "Email required")
+
+    # Rate limit per email — prevents lockout abuse and email-bombing.
+    if not check_rate_limit(f"forgot_pw:{email}", 3, 3600):
+        return {"ok": True, "message": "If an account exists for that email, we've sent a reset link."}
+
     with db() as c:
-        r = c.execute("SELECT id, status FROM users WHERE email = ?", (email,)).fetchone()
+        r = c.execute("SELECT id, status, username FROM users WHERE email = ?", (email,)).fetchone()
     if r and r["status"] == "active":
         token = generate_token()
         expires = int(time.time()) + 60 * 60  # 1 hour
@@ -980,19 +1299,25 @@ async def api_forgot_password(request: Request):
                       (token, expires, r["id"]))
             c.commit()
         reset_url = f"{PUBLIC_BASE_URL}/reset/{token}"
+        username_line = (
+            f'<p style="background:#f6f7fb;border-radius:8px;padding:12px 16px;margin:16px 0">'
+            f'Your username is <strong style="font-family:ui-monospace,monospace">{html_mod.escape(r["username"] or "—")}</strong></p>'
+        ) if r["username"] else ""
         html = (
             '<!DOCTYPE html><html><body style="font-family:Inter,Helvetica,sans-serif;color:#1c1f2a;background:#f6f7fb;line-height:1.6;margin:0;padding:32px 16px">'
             '<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;padding:32px;border:1px solid #e6e8ee">'
             '<h2 style="color:#4a5fc1;margin:0 0 8px">Reset your password</h2>'
             '<p>Click the button below to choose a new password. The link expires in 1 hour.</p>'
+            f'{username_line}'
             f'<p style="margin:24px 0"><a href="{reset_url}" style="background:#4a5fc1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block">Reset my password →</a></p>'
             f'<p style="font-size:13px;color:#7d8a99;word-break:break-all">Or paste this link: {reset_url}</p>'
             '<p style="font-size:12px;color:#7d8a99;margin-top:32px;border-top:1px solid #e6e8ee;padding-top:16px">If you didn\'t request this, ignore this email — your password won\'t change.</p>'
             '</div></body></html>'
         )
         send_email(email, "Reset your Aurora Gracewood password", html,
-                   text=f"Reset your password: {reset_url}\n\nThis link expires in 1 hour.")
+                   text=f"Reset your password: {reset_url}\n\nUsername: {r['username'] or '—'}\n\nThis link expires in 1 hour.")
         log_activity(r["id"], "forgot_password_sent")
+        log_email_event(email, "password_reset_requested", user_id=r["id"])
     return {"ok": True, "message": "If an account exists for that email, we've sent a reset link."}
 
 @app.get("/reset/{token}", response_class=HTMLResponse)
@@ -1012,6 +1337,8 @@ async def api_reset(token: str, request: Request):
     fails = validate_password_rules(password)
     if fails:
         raise HTTPException(400, "Password needs " + "; ".join(fails))
+    if password_is_common(password):
+        raise HTTPException(400, "That password is on a list of commonly-leaked passwords. Pick a different one.")
     with db() as c:
         r = c.execute("""SELECT id, role, password_reset_expires
                          FROM users WHERE password_reset_token = ?""", (token,)).fetchone()
@@ -1036,6 +1363,8 @@ async def api_forgot_username(request: Request):
     email = (data.get("email") or "").strip().lower()
     if not email:
         raise HTTPException(400, "Email required")
+    if not check_rate_limit(f"forgot_user:{email}", 3, 3600):
+        return {"ok": True, "message": "If an account exists for that email, we've sent your username."}
     with db() as c:
         r = c.execute("SELECT id, username FROM users WHERE email = ? AND status = 'active'",
                       (email,)).fetchone()
@@ -1051,7 +1380,48 @@ async def api_forgot_username(request: Request):
         send_email(email, "Your Aurora Gracewood username", html,
                    text=f"Your username: {r['username']}")
         log_activity(r["id"], "forgot_username_sent")
+        log_email_event(email, "username_recovery_requested", user_id=r["id"])
     return {"ok": True, "message": "If an account exists for that email, we've sent your username."}
+
+@app.get("/api/auth/check-username")
+def api_check_username(u: str = "", request: Request = None):
+    """Live availability check. Used by the verify page as the user types.
+    Returns {available: bool, reason: str} — reason is human-readable when unavailable.
+    Does NOT require auth — anyone setting up via verify token needs this."""
+    name = (u or "").strip()
+    fails = validate_username(name)
+    if fails:
+        return {"available": False, "reason": "Username must be " + "; ".join(fails)}
+    canonical = name.lower()
+    with db() as c:
+        existing = c.execute("SELECT 1 FROM users WHERE username_canonical = ?", (canonical,)).fetchone()
+    if existing:
+        return {"available": False, "reason": "Already taken (any case-mix counts)"}
+    return {"available": True, "reason": ""}
+
+@app.post("/api/me/delete-account")
+async def api_delete_account(request: Request):
+    """Soft-delete the requesting user's account. Status flips to 'deleted', deleted_at set,
+    all sessions invalidated. Email is locked from re-signup for 30d (recovery window) plus
+    6 months (lockout) after the recovery window closes. User can recover within 30d by
+    signing in with their old password."""
+    u = get_actor(request)
+    if not u: raise HTTPException(401)
+    if u["role"] == "superuser":
+        raise HTTPException(403, "Superuser account cannot be self-deleted. Contact platform support.")
+    now = int(time.time())
+    with db() as c:
+        c.execute("UPDATE users SET status = 'deleted', deleted_at = ? WHERE id = ?", (now, u["id"]))
+        # Drop every session so the user is signed out everywhere immediately.
+        c.execute("DELETE FROM sessions WHERE user_id = ?", (u["id"],))
+        c.commit()
+    log_email_event(u["email"], "account_deleted", user_id=u["id"])
+    log_activity(u["id"], "account_deleted")
+    response = JSONResponse({"ok": True, "message":
+        "Your account has been deleted. You have 30 days to recover it by signing in. "
+        "After that, this email will be unavailable for re-signup for 6 months."})
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return response
 
 # ---------- END AUTH ROUTES ----------
 
@@ -1758,17 +2128,25 @@ def role_catalog(request: Request):
 # --- per-user data endpoints (for admin/superuser viewing a target user) ---
 
 @app.get("/api/users/{uid}/activity")
-def user_activity(uid: int, request: Request, limit: int = 50):
+def user_activity(uid: int, request: Request, limit: int = 200, q: str = ""):
     actor = get_actor(request)
     if not actor or actor["role"] not in ("admin", "superuser"): raise HTTPException(403)
+    q = (q or "").strip().lower()
     with db() as c:
         rows = c.execute("SELECT id, user_id, actor_role, action, detail, created_at FROM activity WHERE user_id = ? ORDER BY created_at DESC LIMIT ?", (uid, limit)).fetchall()
-        return [dict(r) for r in rows]
+        out = [dict(r) for r in rows]
+    if q:
+        out = [r for r in out if
+               q in (r.get("action") or "").lower() or
+               q in (r.get("detail") or "").lower() or
+               q in (r.get("actor_role") or "").lower()]
+    return out
 
 @app.get("/api/users/{uid}/messages")
-def user_messages(uid: int, request: Request):
+def user_messages(uid: int, request: Request, q: str = ""):
     actor = get_actor(request)
     if not actor or actor["role"] not in ("admin", "superuser"): raise HTTPException(403)
+    q = (q or "").strip().lower()
     with db() as c:
         rows = c.execute("""SELECT m.id, m.from_user, m.to_user, m.subject, m.body, m.read_at, m.created_at,
                                    uf.display_name as from_name, uf.role as from_role,
@@ -1778,15 +2156,51 @@ def user_messages(uid: int, request: Request):
                             LEFT JOIN users ut ON ut.id = m.to_user
                             WHERE m.from_user = ? OR m.to_user = ?
                             ORDER BY m.created_at DESC""", (uid, uid)).fetchall()
-        return [dict(r) for r in rows]
+        out = [dict(r) for r in rows]
+    if q:
+        out = [r for r in out if
+               q in (r.get("subject") or "").lower() or
+               q in (r.get("body") or "").lower() or
+               q in (r.get("from_name") or "").lower() or
+               q in (r.get("to_name") or "").lower()]
+    return out
 
 @app.get("/api/users/{uid}/sessions")
-def user_sessions_endpoint(uid: int, request: Request):
+def user_sessions_endpoint(uid: int, request: Request, q: str = ""):
     actor = get_actor(request)
     if not actor or actor["role"] != "superuser": raise HTTPException(403, "Superuser only")
+    q = (q or "").strip().lower()
     with db() as c:
         rows = c.execute("SELECT id, user_agent, ip, created_at, last_seen_at FROM sessions WHERE user_id = ?", (uid,)).fetchall()
-        return [dict(r) for r in rows]
+        out = [dict(r) for r in rows]
+    if q:
+        out = [r for r in out if
+               q in (r.get("user_agent") or "").lower() or
+               q in (r.get("ip") or "").lower()]
+    return out
+
+@app.get("/api/users/{uid}/email-events")
+def user_email_events(uid: int, request: Request, q: str = ""):
+    """Lifecycle events for the user's email address. Used by the superuser/admin user-modal
+    to trace what's happened with this email — signup pending, verify clicked, account
+    created, signed in events, deletions, etc."""
+    actor = get_actor(request)
+    if not actor or actor["role"] not in ("admin", "superuser"): raise HTTPException(403)
+    q = (q or "").strip().lower()
+    with db() as c:
+        u = c.execute("SELECT email FROM users WHERE id = ?", (uid,)).fetchone()
+        if not u: return []
+        rows = c.execute(
+            "SELECT id, email, user_id, event, detail, created_at FROM email_events WHERE email = ? ORDER BY created_at DESC LIMIT 500",
+            (u["email"].lower(),)
+        ).fetchall()
+        out = [dict(r) for r in rows]
+    if q:
+        out = [r for r in out if
+               q in (r.get("event") or "").lower() or
+               q in (r.get("detail") or "").lower() or
+               q in (r.get("email") or "").lower()]
+    return out
 
 
 # ============== PUBLIC PROFILE RENDERING ==============

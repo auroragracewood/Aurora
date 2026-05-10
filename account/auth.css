@@ -148,6 +148,14 @@
 .ag-eye-btn:hover { background: rgba(255,255,255,.06); color: var(--gc-off-white); }
 .ag-eye-btn:focus { outline: 1px solid rgba(255,255,255,.3); outline-offset: 0; }
 
+.ag-caps-warning {
+  margin-top: 6px;
+  font-size: .76rem;
+  color: var(--ag-light-pink, #f4cfd9);
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
 .ag-checkline {
   display: flex; gap: 10px; align-items: flex-start;
   font-size: .82rem; color: rgba(246,247,251,.72);
